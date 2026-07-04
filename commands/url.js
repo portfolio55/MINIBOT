@@ -35,21 +35,22 @@ export async function execute(sock, m, args) {
     const filePath = join(tempDir, `media_${Date.now()}.${ext}`);
     fs.writeFileSync(filePath, buffer);
 
-    // Upload vers tmpfiles.org (catbox.moe n'accepte plus les uploads anonymes)
+    // Upload vers litterbox.catbox.moe (l'API catbox classique bloque les uploads anonymes
+    // depuis les hébergeurs comme Replit, litterbox reste accessible et donne des liens catbox)
     const form = new FormData();
-    form.append("file", fs.createReadStream(filePath));
+    form.append("reqtype", "fileupload");
+    form.append("time", "72h");
+    form.append("fileToUpload", fs.createReadStream(filePath));
 
-    const upload = await axios.post("https://tmpfiles.org/api/v1/upload", form, {
+    const upload = await axios.post("https://litterbox.catbox.moe/resources/internals/api.php", form, {
       headers: form.getHeaders(),
       timeout: 30000
     });
 
     fs.unlinkSync(filePath); // Nettoyage
 
-    const rawUrl = upload.data?.data?.url;
-    if (!rawUrl) throw new Error("Upload échoué, aucune URL retournée.");
-    // tmpfiles.org sert le fichier via /dl/ pour un accès direct
-    const url = rawUrl.replace("tmpfiles.org/", "tmpfiles.org/dl/");
+    const url = typeof upload.data === "string" ? upload.data.trim() : "";
+    if (!url || !url.startsWith("http")) throw new Error("Upload échoué, aucune URL retournée.");
     await sock.sendMessage(
       m.key.remoteJid,
       { text: `> SIGMA MDX DEPLOY: ? URL générée : ${url}` },
