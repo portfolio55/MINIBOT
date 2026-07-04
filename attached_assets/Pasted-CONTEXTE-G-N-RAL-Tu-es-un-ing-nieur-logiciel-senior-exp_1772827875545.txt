@@ -1,0 +1,165 @@
+CONTEXTE GÉNÉRAL
+
+Tu es un ingénieur logiciel senior expert en Node.js, TypeScript, Baileys (WhatsApp Web API),
+WebSockets, gestion avancée des sessions WhatsApp et architecture multi-utilisateurs sécurisée.
+
+Tu dois transformer un bot WhatsApp Baileys actuellement mono-utilisateur (appairage via terminal)
+en une plateforme web multi-utilisateurs professionnelle.
+
+Nom officiel du site :
+SIGMA MDX DEPLOY
+
+
+OBJECTIF PRINCIPAL
+
+Créer une application web complète permettant à plusieurs utilisateurs de :
+
+1. Saisir leur numéro WhatsApp via une interface web
+2. Générer et afficher le pairing code directement sur la page web (temps réel)
+3. Connecter leur WhatsApp sans aucune interaction terminal
+4. Déployer une instance indépendante du bot
+5. Gérer leur bot via un espace manager sécurisé
+6. Garantir zéro collision entre sessions WhatsApp
+
+
+CONTRAINTE CRITIQUE 1 — APPAREILLAGE WHATSAPP (PRIORITÉ ABSOLUE)
+
+Tu dois analyser en profondeur le système actuel d’appairage WhatsApp utilisé par Baileys.
+
+Comprendre et maîtriser parfaitement :
+- useMultiFileAuthState
+- creds.json
+- keys/
+- pairingCode
+- cycle de vie d’une session WhatsApp Web
+- limitations et bugs fréquents d’appairage
+
+L’implémentation web doit :
+- Reproduire fidèlement le comportement officiel WhatsApp Web
+- Générer le pairing code côté serveur
+- Transmettre le pairing code en temps réel au client web (WebSocket ou équivalent)
+- Gérer proprement :
+  - timeout
+  - erreurs de numéro
+  - tentatives multiples
+  - reconnexion
+  - crash d’instance
+
+Les problèmes d’appairage étant très fréquents, le système doit être robuste, résilient et clairement structuré.
+
+
+CONTRAINTE CRITIQUE 2 — MULTI-UTILISATEUR & ISOLATION DES SESSIONS
+
+Chaque utilisateur doit disposer de son propre bot totalement indépendant.
+
+Règles strictes :
+- Une session WhatsApp = un dossier unique
+- Aucun partage de socket, mémoire ou état
+- Aucune collision possible entre bots
+
+Structure attendue :
+/sessions/
+  /bot_<UUID>/
+    creds.json
+    keys/
+
+Un redémarrage, crash ou suppression d’un bot ne doit jamais affecter les autres.
+
+
+INTERFACE WEB PUBLIQUE
+
+- Nom du site affiché : SIGMA MDX DEPLOY
+- Champ : Numéro WhatsApp (format international)
+- Bouton : Générer le pairing code
+- Affichage dynamique :
+  - pairing code
+  - état (en attente, connecté, erreur)
+- Aucune interaction terminal côté utilisateur
+
+
+ESPACE UTILISATEUR — BOT MANAGER
+
+Après déploiement d’un bot :
+
+- Générer un TOKEN UNIQUE
+- Accès via /dashboard/<TOKEN>
+
+Fonctionnalités :
+- Démarrer le bot
+- Stopper le bot
+- Redémarrer le bot
+- Supprimer définitivement le bot
+- Voir l’état du bot (connecté / déconnecté)
+
+Le token est obligatoire pour toute action.
+
+
+ESPACE ADMIN
+
+Créer un panneau admin séparé permettant :
+
+- Voir tous les bots déployés
+- Pour chaque bot :
+  - numéro WhatsApp
+  - état
+  - token
+- Actions admin :
+  - stop
+  - restart
+  - delete (forcé)
+
+L’admin a le contrôle total sur toutes les instances.
+
+
+STOCKAGE & HÉBERGEMENT
+
+- Hébergement sur panel
+- Utiliser uniquement le stockage local
+- Pas de base de données externe obligatoire
+- Sauvegarde via filesystem et JSON :
+  - sessions
+  - tokens
+  - états bots
+
+
+ARCHITECTURE TECHNIQUE ATTENDUE
+
+- Backend Node.js
+- Express ou Fastify
+- WebSocket ou Socket.io pour pairing code en temps réel
+- Bot Manager central capable de :
+  - créer dynamiquement des instances Baileys
+  - démarrer / stopper / détruire les bots
+
+Séparation claire :
+- backend
+- frontend
+- session manager
+
+
+UTILISATION DU TERMINAL
+
+Autorisé uniquement pour :
+- création de dossiers
+- gestion de processus
+- debug Baileys
+- génération d’UUID
+
+Interdit pour toute interaction utilisateur finale.
+
+
+LIVRABLES ATTENDUS
+
+1. Analyse technique complète
+2. Architecture claire
+3. Structure des dossiers
+4. Code backend principal
+5. Code frontend minimal fonctionnel
+6. Gestion robuste des sessions Baileys
+7. Protection contre collisions, doubles appairages et crashs
+
+
+RÈGLE FINALE
+
+Ce projet doit être conçu comme une plateforme utilisée par des centaines d’utilisateurs simultanément.
+Aucune solution simpliste, aucun hack temporaire.

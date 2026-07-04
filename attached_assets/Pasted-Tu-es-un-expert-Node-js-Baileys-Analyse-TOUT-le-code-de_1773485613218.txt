@@ -1,0 +1,84 @@
+Tu es un expert Node.js/Baileys. Analyse TOUT le code de ce projet et corrige 
+les problèmes suivants de manière PERMANENTE et COMPLÈTE :
+
+═══════════════════════════════════════════════
+PROBLÈME 1 — BOT LENT / COMMANDES QUI NE RÉPONDENT PAS
+═══════════════════════════════════════════════
+- Audite toutes les commandes dans commands/ et bug.js
+- Supprime tout await bloquant inutile (ex: await sleep, await delay non nécessaires)
+- Assure-toi que chaque handler de commande a un try/catch complet — une commande 
+  qui crash NE DOIT PAS bloquer les suivantes
+- Vérifie que le routing dans bug.js est O(1) (Map ou objet indexé), pas une 
+  boucle if/else ou switch linéaire sur 144 commandes
+- Si le routing est une chaîne if/else, refactorise-le en commandMap = {} avec 
+  lookup direct : commandMap[cmd]?.(ctx)
+- Ajoute un timeout de 15s sur chaque exécution de commande — si elle dépasse, 
+  log l'erreur et continue sans bloquer
+
+═══════════════════════════════════════════════
+PROBLÈME 2 — BOT DÉCONNECTE CHEZ L'UTILISATEUR (pas 24/24)
+═══════════════════════════════════════════════
+- Dans botManager.js, vérifie que chaque instance Baileys a ces paramètres :
+    keepAliveIntervalMs: 25000,
+    connectTimeoutMs: 60000,
+    retryRequestDelayMs: 2000,
+    maxMsgRetryCount: 5,
+    fireInitQueries: true,
+    shouldIgnoreJid: () => false
+- Vérifie que l'event 'connection.update' gère CES CAS sans exception :
+    * DisconnectReason.loggedOut → marquer logged_out, NE PAS retry
+    * DisconnectReason.badSession → supprimer session + marquer needs_repair
+    * DisconnectReason.connectionClosed → retry immédiat (max 3x rapide)
+    * DisconnectReason.connectionLost → retry avec backoff 5s/15s/30s
+    * DisconnectReason.connectionReplaced → conflit, backoff exponentiel
+    * DisconnectReason.timedOut → retry immédiat
+    * Tout autre cas → retry avec backoff 10s
+- Le health check (60s) doit détecter un socket mort même si le state dit 
+  "connected" — vérifie via sock.ws?.readyState === WebSocket.OPEN
+- Si readyState !== OPEN et state === 'connected' → forcer restart immédiat du bot
+
+═══════════════════════════════════════════════
+PROBLÈME 3 — ISOLATION MULTI-UTILISATEUR PARFAITE
+═══════════════════════════════════════════════
+- Vérifie que ZÉRO variable globale n'est partagée entre bots (sauf 
+  global.responsRegistry[uuid] qui est déjà isolé)
+- Chaque ProtectionManager doit être instancié avec new ProtectionManager(uuid) 
+  et stocké dans une Map<uuid, instance> — jamais réutilisé entre bots
+- Vérifie que sessionManager.js ne cache jamais de données d'un bot dans 
+  l'objet d'un autre bot
+- Si tu trouves des variables module-level mutables partagées, refactorise-les 
+  en Map<uuid, value>
+
+═══════════════════════════════════════════════
+PROBLÈME 4 — STABILITÉ PROCESS (pas de crash silencieux)
+═══════════════════════════════════════════════
+- Dans start.js, assure-toi que uncaughtException et unhandledRejection loggent 
+  l'erreur complète (stack trace) SANS tuer le process
+- Ajoute un watchdog : si le nombre de bots "connected" chute à 0 alors qu'il 
+  y en avait >0 il y a 2 min → log une alerte critique et relancer le recovery sweep
+- Le recovery sweep (5 min) doit traiter les bots en erreur EN PARALLÈLE avec 
+  Promise.allSettled, pas séquentiellement
+
+═══════════════════════════════════════════════
+PROBLÈME 5 — PERFORMANCE DB (lenteur requêtes)
+═══════════════════════════════════════════════
+- Dans db.js, vérifie que le pool PostgreSQL a : 
+    max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000
+- Toutes les lectures fréquentes (session, config bot) DOIVENT passer par le 
+  cache in-memory en PREMIER — la DB ne sert qu'au cache miss et aux écritures
+- Ajoute des index PostgreSQL si manquants :
+    CREATE INDEX IF NOT EXISTS idx_bots_uuid ON bots(uuid);
+    CREATE INDEX IF NOT EXISTS idx_baileys_auth_id ON baileys_auth(session_id);
+    CREATE INDEX IF NOT EXISTS idx_group_protections_jid ON group_protections(group_jid, bot_uuid);
+
+═══════════════════════════════════════════════
+APRÈS TOUTES LES CORRECTIONS :
+═══════════════════════════════════════════════
+1. Lance le projet et vérifie qu'il démarre sans erreur
+2. Montre-moi un résumé de CHAQUE fichier modifié avec ce qui a changé
+3. Confirme que le routing des commandes est bien indexé (Map/objet)
+4. Confirme que le health check détecte bien les WebSocket morts
+5. Confirme que les index DB ont été créés
+
+NE SKIP AUCUN FICHIER. NE FAIS PAS DE CORRECTIONS PARTIELLES.
+Chaque problème doit être résolu à 100% avant de passer au suivant.

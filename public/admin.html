@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA MDX DEPLOY - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .auth-form {
+            max-width: 400px;
+            margin: 0 auto 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .auth-form input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .auth-form button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .admin-panel {
+            display: none;
+        }
+
+        .admin-panel.active {
+            display: block;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .bots-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .bots-table th,
+        .bots-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .bots-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .bots-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-badge.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-badge.pairing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-badge.stopped {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-action {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-restart {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-delete {
+            background: #6c757d;
+            color: white;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .token-cell {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 SIGMA MDX DEPLOY</h1>
+        <p class="subtitle">Panneau d'administration</p>
+
+        <div class="alert" id="alert"></div>
+
+        <div class="auth-form" id="authForm">
+            <input type="password" id="adminPassword" placeholder="Mot de passe admin" autocomplete="off">
+            <button onclick="authenticate()">Se connecter</button>
+        </div>
+
+        <div class="admin-panel" id="adminPanel">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalBots">0</div>
+                    <div class="stat-label">Bots totaux</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="connectedBots">0</div>
+                    <div class="stat-label">Connectés</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="disconnectedBots">0</div>
+                    <div class="stat-label">Déconnectés</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="capacityBots">0/100</div>
+                    <div class="stat-label">Capacité utilisée</div>
+                </div>
+            </div>
+
+            <table class="bots-table">
+                <thead>
+                    <tr>
+                        <th>UUID</th>
+                        <th>Numéro</th>
+                        <th>Token</th>
+                        <th>Statut</th>
+                        <th>Créé le</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="botsTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px;">
+                            Chargement...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let adminPassword = null;
+
+        function showAlert(message, type) {
+            const alertDiv = document.getElementById('alert');
+            alertDiv.textContent = message;
+            alertDiv.className = `alert ${type} show`;
+            setTimeout(() => {
+                alertDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        async function authenticate() {
+            const password = document.getElementById('adminPassword').value;
+            
+            if (!password) {
+                showAlert('Veuillez entrer le mot de passe', 'error');
+                return;
+            }
+
+            adminPassword = password;
+            await loadBots();
+        }
+
+        async function loadBots() {
+            try {
+                const response = await fetch('/api/admin/bots', {
+                    headers: {
+                        'Authorization': 'Bearer ' + adminPassword
+                    }
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors du chargement');
+                }
+
+                // Afficher le panneau admin
+                document.getElementById('authForm').style.display = 'none';
+                document.getElementById('adminPanel').classList.add('active');
+
+                // Mettre à jour les statistiques
+                const total = data.bots.length;
+                const connected = data.bots.filter(b => b.socketStatus === 'connected').length;
+                const disconnected = total - connected;
+
+                document.getElementById('totalBots').textContent = total;
+                document.getElementById('connectedBots').textContent = connected;
+                document.getElementById('disconnectedBots').textContent = disconnected;
+
+                if (data.capacity) {
+                    const cap = data.capacity;
+                    document.getElementById('capacityBots').textContent = `${cap.active}/${cap.max}`;
+                    const pct = Math.round((cap.active / cap.max) * 100);
+                    const capCard = document.getElementById('capacityBots').parentElement;
+                    capCard.style.borderTop = `4px solid ${pct >= 90 ? '#ff4444' : pct >= 70 ? '#ffaa00' : '#00cc66'}`;
+                }
+
+                // Remplir le tableau
+                const tbody = document.getElementById('botsTableBody');
+                tbody.innerHTML = '';
+
+                if (data.bots.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;">Aucun bot déployé</td></tr>';
+                    return;
+                }
+
+                data.bots.forEach(bot => {
+                    const row = document.createElement('tr');
+                    const createdAt = new Date(bot.createdAt).toLocaleString('fr-FR');
+                    const status = bot.socketStatus || bot.status || 'unknown';
+
+                    row.innerHTML = `
+                        <td style="font-family: monospace; font-size: 11px;">${bot.uuid.substring(0, 8)}...</td>
+                        <td>${bot.phoneNumber || '-'}</td>
+                        <td class="token-cell" title="${bot.token}">${bot.token.substring(0, 20)}...</td>
+                        <td><span class="status-badge ${status}">${status}</span></td>
+                        <td>${createdAt}</td>
+                        <td class="action-buttons">
+                            <button class="btn-action btn-start" onclick="adminAction('${bot.uuid}', 'start')">Start</button>
+                            <button class="btn-action btn-stop" onclick="adminAction('${bot.uuid}', 'stop')">Stop</button>
+                            <button class="btn-action btn-restart" onclick="adminAction('${bot.uuid}', 'restart')">Restart</button>
+                            <button class="btn-action btn-delete" onclick="adminAction('${bot.uuid}', 'delete')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+            } catch (error) {
+                showAlert(`Erreur : ${error.message}`, 'error');
+                if (error.message.includes('non autorisé')) {
+                    adminPassword = null;
+                    document.getElementById('adminPassword').value = '';
+                }
+            }
+        }
+
+        async function adminAction(uuid, action) {
+            if (!adminPassword) {
+                showAlert('Veuillez vous authentifier', 'error');
+                return;
+            }
+
+            if (action === 'delete' && !confirm(`Êtes-vous sûr de vouloir supprimer le bot ${uuid.substring(0, 8)}... ?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/bot/${uuid}/${action}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + adminPassword
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de l\'action');
+                }
+
+                showAlert(`Action ${action} exécutée avec succès`, 'success');
+                await loadBots();
+            } catch (error) {
+                showAlert(`Erreur : ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-reload toutes les 30 secondes
+        setInterval(() => {
+            if (adminPassword) {
+                loadBots();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

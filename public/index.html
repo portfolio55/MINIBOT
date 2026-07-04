@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA MDX DEPLOY - Appairage WhatsApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .subtitle {
+                font-size: 12px;
+            }
+            
+            .form-group input {
+                font-size: 16px;
+                padding: 15px;
+            }
+            
+            .btn {
+                padding: 15px;
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .container {
+                padding: 15px;
+                margin: 5px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+            
+            .btn {
+                padding: 12px;
+                font-size: 14px;
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .pairing-code-container {
+            margin-top: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+        }
+
+        .pairing-code-container.active {
+            display: block;
+        }
+
+        .pairing-code-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .pairing-code {
+            font-size: 48px;
+            font-weight: bold;
+            color: #333;
+            letter-spacing: 8px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            display: block;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .channel-banner {
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            text-align: center;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .channel-banner h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .channel-banner p {
+            font-size: 14px;
+            opacity: 0.95;
+            margin-bottom: 12px;
+        }
+        .btn-channel {
+            display: inline-block;
+            padding: 14px 28px;
+            background: #fff;
+            color: #128C7E;
+            font-weight: 700;
+            text-decoration: none;
+            border-radius: 8px;
+            animation: blink 1.2s ease-in-out infinite;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .btn-channel:hover {
+            background: #dcf8c6;
+            color: #075E54;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.02); }
+        }
+        .btn-channel-floating {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+            font-weight: 700;
+            text-decoration: none;
+            border-radius: 50px;
+            box-shadow: 0 6px 25px rgba(37, 211, 102, 0.5);
+            animation: blink 1.2s ease-in-out infinite;
+        }
+        .btn-channel-floating:hover {
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .token-display {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 12px;
+            word-break: break-all;
+            display: none;
+        }
+
+        .token-display.active {
+            display: block;
+        }
+
+        .token-label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener" class="btn-channel-floating">📢 Rejoindre la chaîne</a>
+
+    <div class="container">
+        <div class="channel-banner">
+            <h2>📢 OBLIGATOIRE AVANT DE DEPLOYER</h2>
+            <p>Vous devez rejoindre la chaîne WhatsApp SIGMA MDX DEPLOY pour pouvoir utiliser le bot.</p>
+            <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener" class="btn-channel">Rejoindre la chaîne WhatsApp</a>
+        </div>
+
+        <h1>🚀 SIGMA MDX DEPLOY</h1>
+        <p class="subtitle">Connectez votre WhatsApp en quelques secondes</p>
+
+        <form id="pairingForm">
+            <div class="form-group">
+                <label for="phoneNumber">Numéro WhatsApp</label>
+                <input 
+                    type="text" 
+                    id="phoneNumber" 
+                    name="phoneNumber" 
+                    placeholder="Ex: 237673941535" 
+                    required
+                    pattern="[0-9]{10,15}"
+                >
+                <p class="help-text">Format international (10-15 chiffres, sans + ni espaces)</p>
+            </div>
+
+            <button type="submit" id="submitBtn">
+                Générer le code d'appairage
+            </button>
+        </form>
+
+        <div class="status" id="status"></div>
+
+        <div class="pairing-code-container" id="pairingContainer">
+            <div class="pairing-code-label">Code d'appairage</div>
+            <div class="pairing-code" id="pairingCode">- - - - - - - -</div>
+            <div class="instructions">
+                <strong>Instructions :</strong>
+                <ol>
+                    <li>Ouvrez WhatsApp sur votre téléphone</li>
+                    <li>Allez dans <strong>Paramètres</strong> → <strong>Appareils liés</strong></li>
+                    <li>Appuyez sur <strong>Lier un appareil</strong></li>
+                    <li>Sélectionnez <strong>Lier avec un code</strong></li>
+                    <li>Entrez le code ci-dessus</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="token-display" id="tokenDisplay">
+            <div class="token-label">🔑 Votre token d'accès :</div>
+            <div id="tokenValue"></div>
+            <p style="margin-top: 10px; font-size: 11px; color: #666;">
+                Conservez ce token pour accéder à votre dashboard. Vous serez redirigé automatiquement après la connexion.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * SIGMA MDX DEPLOY - Frontend Pairing
+         * [AMÉLIORÉ] Chargement dynamique de Socket.io avec fallback,
+         * formulaire qui fonctionne même sans WebSocket (fetch uniquement),
+         * et mécanisme de retry automatique.
+         */
+        (function() {
+            'use strict';
+
+            // === Configuration ===
+            const STORAGE_TOKEN_KEY = 'sigma_mdx_token';
+            const MAX_RETRIES = 2;
+            const RETRY_DELAY_MS = 3000;
+
+            // === État ===
+            let socket = null;
+            let socketReady = false;
+            let currentUUID = null;
+            let currentToken = null;
+            let retryCount = 0;
+
+            // === Éléments DOM ===
+            const form = document.getElementById('pairingForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const statusDiv = document.getElementById('status');
+            const pairingContainer = document.getElementById('pairingContainer');
+            const pairingCodeDiv = document.getElementById('pairingCode');
+            const tokenDisplay = document.getElementById('tokenDisplay');
+            const tokenValue = document.getElementById('tokenValue');
+
+            // === Fonctions utilitaires ===
+            function showStatus(message, type) {
+                statusDiv.textContent = message;
+                statusDiv.className = 'status ' + type;
+            }
+
+            function hideStatus() {
+                statusDiv.className = 'status';
+            }
+
+            function displayPairingCode(code) {
+                pairingCodeDiv.textContent = code.split('').join(' ');
+                pairingContainer.classList.add('active');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Code généré ✓';
+                hideStatus();
+            }
+
+            function resetButton() {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Générer le code d\'appairage';
+            }
+
+            // === Chargement dynamique de Socket.io ===
+            function loadSocketIO() {
+                return new Promise(function(resolve) {
+                    // Si déjà chargé
+                    if (typeof io === 'function') {
+                        resolve(true);
+                        return;
+                    }
+
+                    var script = document.createElement('script');
+                    // Utiliser le fichier servi par le serveur Socket.io lui-même
+                    script.src = '/socket.io/socket.io.js';
+                    script.onload = function() {
+                        resolve(typeof io === 'function');
+                    };
+                    script.onerror = function() {
+                        console.warn('[SIGMA] Socket.io non disponible, mode fetch uniquement');
+                        resolve(false);
+                    };
+                    // Timeout de 5s pour le chargement
+                    setTimeout(function() {
+                        resolve(typeof io === 'function');
+                    }, 5000);
+                    document.head.appendChild(script);
+                });
+            }
+
+            function initSocket() {
+                if (typeof io !== 'function') return;
+                
+                try {
+                    socket = io({
+                        transports: ['websocket', 'polling'],
+                        reconnection: true,
+                        reconnectionAttempts: 5,
+                        reconnectionDelay: 2000,
+                        timeout: 10000
+                    });
+
+                    socket.on('connect', function() {
+                        socketReady = true;
+                        console.log('[SIGMA] WebSocket connecté');
+                        // Rejoindre la room si un pairing est en cours
+                        if (currentUUID) {
+                            socket.emit('join-pairing', { uuid: currentUUID });
+                        }
+                    });
+
+                    socket.on('disconnect', function() {
+                        socketReady = false;
+                    });
+
+                    socket.on('pairing-code', function(data) {
+                        if (data.uuid === currentUUID && data.pairingCode) {
+                            displayPairingCode(data.pairingCode);
+                        }
+                    });
+
+                    socket.on('pairing-success', function(data) {
+                        if (data.uuid === currentUUID) {
+                            showStatus('✅ Connexion réussie ! Redirection vers le dashboard...', 'success');
+                            setTimeout(function() {
+                                var token = currentToken || localStorage.getItem(STORAGE_TOKEN_KEY);
+                                if (token) {
+                                    window.location.href = '/dashboard/' + token;
+                                } else {
+                                    showStatus('⚠️ Connexion OK mais token introuvable. Relancez le pairing.', 'error');
+                                }
+                            }, 2000);
+                        }
+                    });
+
+                    socket.on('pairing-error', function(data) {
+                        if (data.uuid === currentUUID) {
+                            showStatus('❌ Erreur : ' + data.error, 'error');
+                            resetButton();
+                        }
+                    });
+                } catch (e) {
+                    console.warn('[SIGMA] Erreur init socket:', e);
+                }
+            }
+
+            // === Soumission du formulaire ===
+            async function handleSubmit(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                var phoneNumber = document.getElementById('phoneNumber').value.trim();
+                
+                // Validation côté client
+                if (!phoneNumber || phoneNumber.length < 10 || !/^\d{10,15}$/.test(phoneNumber)) {
+                    showStatus('Veuillez entrer un numéro valide (10-15 chiffres)', 'error');
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="loading"></span>Génération du code...';
+                hideStatus();
+                pairingContainer.classList.remove('active');
+                tokenDisplay.classList.remove('active');
+                localStorage.removeItem(STORAGE_TOKEN_KEY);
+                retryCount = 0;
+
+                await startPairing(phoneNumber);
+            }
+
+            async function startPairing(phoneNumber) {
+                try {
+                    var response = await fetch('/api/pairing/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phoneNumber: phoneNumber })
+                    });
+
+                    var data = await response.json();
+
+                    if (!response.ok) {
+                        // Si un bot existe déjà et est connecté
+                        if (data && data.token) {
+                            localStorage.setItem(STORAGE_TOKEN_KEY, data.token);
+                            showStatus('✅ Bot déjà connecté. Redirection vers le dashboard...', 'success');
+                            setTimeout(function() {
+                                window.location.href = '/dashboard/' + data.token;
+                            }, 1200);
+                            return;
+                        }
+
+                        // Vérifier si c'est une erreur récupérable (Connection Closed)
+                        var errorMsg = data.error || 'Erreur lors du démarrage';
+                        if (isRetryableError(errorMsg) && retryCount < MAX_RETRIES) {
+                            retryCount++;
+                            showStatus('⏳ Connexion en cours... Tentative ' + (retryCount + 1) + '/' + (MAX_RETRIES + 1), 'info');
+                            submitBtn.innerHTML = '<span class="loading"></span>Reconnexion...';
+                            await delay(RETRY_DELAY_MS);
+                            await startPairing(phoneNumber);
+                            return;
+                        }
+
+                        throw new Error(errorMsg);
+                    }
+
+                    // Succès
+                    currentUUID = data.uuid;
+                    currentToken = data.token;
+                    if (currentToken) {
+                        localStorage.setItem(STORAGE_TOKEN_KEY, currentToken);
+                    }
+
+                    // Rejoindre la room WebSocket pour ce bot
+                    if (socket && socketReady) {
+                        socket.emit('join-pairing', { uuid: currentUUID });
+                    }
+
+                    // Afficher le pairing code immédiatement si disponible
+                    if (data.pairingCode) {
+                        displayPairingCode(data.pairingCode);
+                    } else {
+                        showStatus('⏳ Attente du code d\'appairage...', 'info');
+                        // Polling fallback si pas de WebSocket
+                        if (!socketReady) {
+                            pollForPairingCode(currentUUID, currentToken);
+                        }
+                    }
+
+                    // Afficher le token
+                    if (currentToken) {
+                        tokenValue.textContent = currentToken;
+                        tokenDisplay.classList.add('active');
+                    }
+
+                } catch (error) {
+                    showStatus(error.message, 'error');
+                    resetButton();
+                }
+            }
+
+            // === Polling fallback (si WebSocket indisponible) ===
+            function pollForPairingCode(uuid, token) {
+                var attempts = 0;
+                var maxAttempts = 15; // 15 x 2s = 30s max
+                
+                var interval = setInterval(async function() {
+                    attempts++;
+                    if (attempts > maxAttempts) {
+                        clearInterval(interval);
+                        return;
+                    }
+
+                    try {
+                        var res = await fetch('/api/bot/status/' + uuid, {
+                            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+                        });
+                        if (res.ok) {
+                            var statusData = await res.json();
+                            if (statusData.status === 'connected') {
+                                clearInterval(interval);
+                                showStatus('✅ Connexion réussie ! Redirection...', 'success');
+                                setTimeout(function() {
+                                    window.location.href = '/dashboard/' + token;
+                                }, 1500);
+                            }
+                        }
+                    } catch (e) {
+                        // Ignorer les erreurs de polling
+                    }
+                }, 2000);
+            }
+
+            // === Utilitaires ===
+            function isRetryableError(msg) {
+                var retryablePatterns = [
+                    'Connection Closed',
+                    'connection closed',
+                    'ETIMEDOUT',
+                    'ECONNRESET',
+                    'ECONNREFUSED',
+                    'socket hang up',
+                    'timeout',
+                    'network error'
+                ];
+                return retryablePatterns.some(function(pattern) {
+                    return msg.toLowerCase().includes(pattern.toLowerCase());
+                });
+            }
+
+            function delay(ms) {
+                return new Promise(function(resolve) { setTimeout(resolve, ms); });
+            }
+
+            // === Initialisation ===
+            // Empêcher le submit GET natif du formulaire
+            form.addEventListener('submit', handleSubmit);
+
+            // Charger Socket.io de manière asynchrone (non bloquante)
+            loadSocketIO().then(function(loaded) {
+                if (loaded) {
+                    initSocket();
+                } else {
+                    console.log('[SIGMA] Mode fetch uniquement (pas de WebSocket temps réel)');
+                }
+            });
+
+        })();
+    </script>
+</body>
+</html>

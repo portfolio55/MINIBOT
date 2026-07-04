@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA MDX DEPLOY - Dashboard</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .info-value {
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-badge.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-badge.pairing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-badge.stopped {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-restart {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-delete {
+            background: #6c757d;
+            color: white;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .channel-banner {
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+            padding: 18px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            text-align: center;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .channel-banner h2 { font-size: 16px; margin-bottom: 8px; }
+        .channel-banner p { font-size: 13px; opacity: 0.95; margin-bottom: 10px; }
+        .btn-channel {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #fff;
+            color: #128C7E;
+            font-weight: 700;
+            text-decoration: none;
+            border-radius: 8px;
+            animation: blink 1.2s ease-in-out infinite;
+        }
+        .btn-channel:hover { background: #dcf8c6; color: #075E54; }
+        @keyframes blink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.02); }
+        }
+        .btn-channel-floating {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+            font-weight: 700;
+            text-decoration: none;
+            border-radius: 50px;
+            box-shadow: 0 6px 25px rgba(37, 211, 102, 0.5);
+            animation: blink 1.2s ease-in-out infinite;
+        }
+        .btn-channel-floating:hover { color: white; transform: scale(1.05); }
+
+        .delete-confirm {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .delete-confirm.show {
+            display: block;
+        }
+
+        .delete-confirm p {
+            margin-bottom: 15px;
+            color: #856404;
+        }
+
+        .delete-confirm-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .delete-confirm-buttons button {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener" class="btn-channel-floating">📢 Rejoindre la chaîne</a>
+
+    <div class="container">
+        <div class="channel-banner">
+            <h2>📢 Rejoignez la chaîne SIGMA MDX DEPLOY</h2>
+            <p>Restez à jour : chaîne officielle WhatsApp.</p>
+            <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener" class="btn-channel">Rejoindre la chaîne WhatsApp</a>
+        </div>
+
+        <h1>🚀 SIGMA MDX DEPLOY</h1>
+        <p class="subtitle">Gestionnaire de Bot WhatsApp</p>
+
+        <div class="alert" id="alert"></div>
+
+        <div class="info-card">
+            <div class="info-row">
+                <span class="info-label">📱 Numéro WhatsApp :</span>
+                <span class="info-value" id="phoneNumber">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">🔑 Token :</span>
+                <span class="info-value" id="token">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">📊 Statut :</span>
+                <span class="status-badge" id="statusBadge">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">📅 Créé le :</span>
+                <span class="info-value" id="createdAt">-</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn-start" id="btnStart" onclick="startBot()">
+                ▶ Démarrer
+            </button>
+            <button class="btn-stop" id="btnStop" onclick="stopBot()">
+                ⏹ Arrêter
+            </button>
+            <button class="btn-restart" id="btnRestart" onclick="restartBot()">
+                🔄 Redémarrer
+            </button>
+            <button class="btn-delete" id="btnDelete" onclick="showDeleteConfirm()">
+                🗑 Supprimer
+            </button>
+        </div>
+
+        <div class="delete-confirm" id="deleteConfirm">
+            <p><strong>⚠️ Attention !</strong> Cette action est irréversible. Toutes les données du bot seront supprimées définitivement.</p>
+            <div class="delete-confirm-buttons">
+                <button class="btn-delete" onclick="confirmDelete()">Confirmer la suppression</button>
+                <button class="btn-stop" onclick="hideDeleteConfirm()">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const token = window.location.pathname.split('/').pop();
+        let botUUID = null;
+        let currentStatus = null;
+
+        const alertDiv = document.getElementById('alert');
+        const phoneNumberDiv = document.getElementById('phoneNumber');
+        const tokenDiv = document.getElementById('token');
+        const statusBadge = document.getElementById('statusBadge');
+        const createdAtDiv = document.getElementById('createdAt');
+
+        function showAlert(message, type) {
+            alertDiv.textContent = message;
+            alertDiv.className = `alert ${type} show`;
+            setTimeout(() => {
+                alertDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        function updateStatus(status) {
+            currentStatus = status;
+            statusBadge.textContent = status;
+            statusBadge.className = `status-badge ${status}`;
+
+            // Activer/désactiver les boutons selon le statut
+            const btnStart = document.getElementById('btnStart');
+            const btnStop = document.getElementById('btnStop');
+            const btnRestart = document.getElementById('btnRestart');
+
+            if (status === 'connected') {
+                btnStart.disabled = true;
+                btnStop.disabled = false;
+                btnRestart.disabled = false;
+            } else if (status === 'disconnected' || status === 'stopped') {
+                btnStart.disabled = false;
+                btnStop.disabled = true;
+                btnRestart.disabled = false;
+            } else if (status === 'pairing') {
+                btnStart.disabled = true;
+                btnStop.disabled = true;
+                btnRestart.disabled = true;
+            }
+        }
+
+        async function loadBotInfo() {
+            try {
+                const response = await fetch(`/api/bot/${token}/status`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors du chargement');
+                }
+
+                botUUID = data.uuid;
+                phoneNumberDiv.textContent = data.phoneNumber || '-';
+                tokenDiv.textContent = data.token || token;
+                
+                const createdAt = new Date(data.createdAt);
+                createdAtDiv.textContent = createdAt.toLocaleString('fr-FR');
+
+                updateStatus(data.socketStatus || data.status || 'unknown');
+
+                // Rejoindre la room WebSocket pour ce bot
+                socket.emit('join-bot', { uuid: botUUID });
+
+            } catch (error) {
+                showAlert(`Erreur : ${error.message}`, 'error');
+            }
+        }
+
+        async function startBot() {
+            try {
+                const btn = document.getElementById('btnStart');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading"></span>Démarrage...';
+
+                const response = await fetch(`/api/bot/${token}/start`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors du démarrage');
+                }
+
+                showAlert('Bot démarré avec succès', 'success');
+                updateStatus('connecting');
+            } catch (error) {
+                showAlert(`Erreur : ${error.message}`, 'error');
+            } finally {
+                const btn = document.getElementById('btnStart');
+                btn.disabled = false;
+                btn.textContent = '▶ Démarrer';
+            }
+        }
+
+        async function stopBot() {
+            try {
+                const btn = document.getElementById('btnStop');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading"></span>Arrêt...';
+
+                const response = await fetch(`/api/bot/${token}/stop`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de l\'arrêt');
+                }
+
+                showAlert('Bot arrêté', 'success');
+                updateStatus('stopped');
+            } catch (error) {
+                showAlert(`Erreur : ${error.message}`, 'error');
+            } finally {
+                const btn = document.getElementById('btnStop');
+                btn.disabled = false;
+                btn.textContent = '⏹ Arrêter';
+            }
+        }
+
+        async function restartBot() {
+            try {
+                const btn = document.getElementById('btnRestart');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading"></span>Redémarrage...';
+
+                const response = await fetch(`/api/bot/${token}/restart`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors du redémarrage');
+                }
+
+                showAlert('Bot redémarré', 'success');
+                updateStatus('connecting');
+            } catch (error) {
+                showAlert(`Erreur : ${error.message}`, 'error');
+            } finally {
+                const btn = document.getElementById('btnRestart');
+                btn.disabled = false;
+                btn.textContent = '🔄 Redémarrer';
+            }
+        }
+
+        function showDeleteConfirm() {
+            document.getElementById('deleteConfirm').classList.add('show');
+        }
+
+        function hideDeleteConfirm() {
+            document.getElementById('deleteConfirm').classList.remove('show');
+        }
+
+        async function confirmDelete() {
+            try {
+                const btn = document.getElementById('btnDelete');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading"></span>Suppression...';
+
+                const response = await fetch(`/api/bot/${token}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la suppression');
+                }
+
+                showAlert('✅ Bot supprimé avec succès. Redirection...', 'success');
+                hideDeleteConfirm();
+                
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            } catch (error) {
+                showAlert(`❌ Erreur : ${error.message}`, 'error');
+                hideDeleteConfirm();
+                
+                // Réactiver le bouton en cas d'erreur
+                const btn = document.getElementById('btnDelete');
+                btn.disabled = false;
+                btn.textContent = '🗑 Supprimer';
+            }
+        }
+
+        // Écouter les événements WebSocket
+        socket.on('bot-status', ({ uuid, status }) => {
+            if (uuid === botUUID) {
+                updateStatus(status);
+            }
+        });
+
+        socket.on('bot-error', ({ uuid, error }) => {
+            if (uuid === botUUID) {
+                showAlert(`Erreur : ${error}`, 'error');
+            }
+        });
+
+        // Charger les informations au chargement de la page
+        loadBotInfo();
+
+        // Rafraîchir le statut toutes les 10 secondes
+        setInterval(loadBotInfo, 10000);
+    </script>
+</body>
+</html>
