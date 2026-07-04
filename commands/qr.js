@@ -2,7 +2,7 @@ import axios from "axios";
 
 export const name = "qr";
 
-const GIFTED_QR_ENDPOINT = "https://api.giftedtech.co.ke/api/tools/createqr";
+const GIFTED_QR_ENDPOINT = "https://api.gifted.co.ke/api/tools/createqr";
 const GIFTED_API_KEY = process.env.GIFTED_API_KEY || "gifted";
 
 export async function execute(sock, msg, args, from) {

@@ -6,7 +6,7 @@ const AI_APIS = [
   {
     name: "GiftedTech",
     call: async (query) => {
-      const { data } = await axios.get("https://api.giftedtech.co.ke/api/ai/ai", {
+      const { data } = await axios.get("https://api.gifted.co.ke/api/ai/ai", {
         params: { apikey: process.env.GIFTED_API_KEY || "gifted", q: query },
         timeout: 15000
       });

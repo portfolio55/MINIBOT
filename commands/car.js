@@ -1,4 +1,9 @@
+import axios from "axios";
+
 export const name = "car";
+
+const GIFTED_SEARCH_ENDPOINT = "https://api.gifted.co.ke/api/search/google";
+const GIFTED_API_KEY = process.env.GIFTED_API_KEY || "gifted";
 
 export async function execute(sock, msg, args) {
   const from = msg.key.remoteJid;
@@ -6,41 +11,29 @@ export async function execute(sock, msg, args) {
   try {
     const marque = args[0] || "Toyota";
     const modele = args[1] || "Corolla";
-    
-    // API CarsXE (gratuit 500 req/mois)
-    const API_KEY = "TON_API_KEY";
-    if (API_KEY === "TON_API_KEY" || API_KEY === "YOUR_API_KEY") {
-      await sock.sendMessage(from, {
-        text: "> SIGMA MDX DEPLOY: ❌ Cette commande nécessite une clé API non configurée.\nContactez l'administrateur."
-      }, { quoted: msg });
-      return;
-    }
-    const url = `https://api.carsxe.com/specs?key=${API_KEY}&make=${marque}&model=${modele}&year=2020`;
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (!data.specs) {
+
+    const { data } = await axios.get(GIFTED_SEARCH_ENDPOINT, {
+      params: { apikey: GIFTED_API_KEY, query: `${marque} ${modele} specs engine horsepower price` },
+      timeout: 20000
+    });
+
+    const results = data?.results;
+    if (!data?.success || !Array.isArray(results) || !results.length) {
       await sock.sendMessage(from, { text: "> ❌ SIGMA MDX DEPLOY : Voiture non trouvée." }, { quoted: msg });
       return;
     }
-    
-    const spec = data.specs[0];
-    
-    const reply = `> ?? SIGMA MDX DEPLOY : ${spec.make} ${spec.model}
+
+    const top = results.slice(0, 3);
+    const lines = top.map((r, i) => `*${i + 1}. ${r.title}*\n${r.description || ""}\n🔗 ${r.link}`).join("\n\n");
+
+    const reply = `> 🚗 SIGMA MDX DEPLOY : ${marque} ${modele}
 🎨🎨🎨🎨🎨🎨
-?? Année: ${spec.year}
-?? Moteur: ${spec.engine}
-? Carburant: ${spec.fuel_type}
-?? Puissance: ${spec.horsepower} hp
-? Transmission: ${spec.transmission}
-?? 0-100 km/h: ${spec.zero_to_sixty_mph || "N/A"} sec
-?? Prix estimé: $${spec.price || "N/A"}`;
-    
+${lines}`;
+
     await sock.sendMessage(from, { text: reply }, { quoted: msg });
-    
+
   } catch (err) {
-    console.error("Erreur car :", err);
+    console.error("Erreur car :", err?.message || err);
     await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY : Service voitures indisponible." }, { quoted: msg });
   }
 }

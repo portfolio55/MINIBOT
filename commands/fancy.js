@@ -2,7 +2,7 @@ import axios from "axios";
 
 export const name = "fancy";
 
-const GIFTED_FANCY_ENDPOINT = "https://api.giftedtech.co.ke/api/tools/fancyv2";
+const GIFTED_FANCY_ENDPOINT = "https://api.gifted.co.ke/api/tools/fancyv2";
 const GIFTED_API_KEY = process.env.GIFTED_API_KEY || "gifted";
 
 export async function execute(sock, msg, args, from) {

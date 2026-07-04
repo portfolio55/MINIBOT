@@ -2,7 +2,7 @@ import axios from "axios";
 
 export const name = "glow";
 
-const GIFTED_GLOW_ENDPOINT = "https://api.giftedtech.co.ke/api/ephoto360/advancedglow";
+const GIFTED_GLOW_ENDPOINT = "https://api.gifted.co.ke/api/ephoto360/advancedglow";
 const GIFTED_API_KEY = process.env.GIFTED_API_KEY || "gifted";
 
 export async function execute(sock, msg, args, from) {

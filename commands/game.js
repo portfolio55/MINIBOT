@@ -1,50 +1,45 @@
+import axios from "axios";
+
 export const name = "game";
+
+const GIFTED_SEARCH_ENDPOINT = "https://api.gifted.co.ke/api/search/google";
+const GIFTED_API_KEY = process.env.GIFTED_API_KEY || "gifted";
 
 export async function execute(sock, msg, args) {
   const from = msg.key.remoteJid;
 
   try {
     if (!args.length) {
-      await sock.sendMessage(from, { 
-        text: "> ?? SIGMA MDX DEPLOY : Usage: !game <nom>\nEx: !game Minecraft" 
+      await sock.sendMessage(from, {
+        text: "> 🎮 SIGMA MDX DEPLOY : Usage: !game <nom>\nEx: !game Minecraft"
       }, { quoted: msg });
       return;
     }
-    
+
     const search = args.join(" ");
-    
-    // API RAWG (gratuit 20k req/mois)
-    const API_KEY = "TON_API_KEY";
-    if (API_KEY === "TON_API_KEY" || API_KEY === "YOUR_API_KEY") {
-      await sock.sendMessage(from, {
-        text: "> SIGMA MDX DEPLOY: ❌ Cette commande nécessite une clé API non configurée.\nContactez l'administrateur."
-      }, { quoted: msg });
-      return;
-    } // rawg.io/apidocs
-    const url = `https://api.rawg.io/api/games?key=${API_KEY}&search=${encodeURIComponent(search)}&page_size=1`;
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (!data.results || data.results.length === 0) {
+
+    const { data } = await axios.get(GIFTED_SEARCH_ENDPOINT, {
+      params: { apikey: GIFTED_API_KEY, query: `${search} video game release date rating platforms` },
+      timeout: 20000
+    });
+
+    const results = data?.results;
+    if (!data?.success || !Array.isArray(results) || !results.length) {
       await sock.sendMessage(from, { text: "> ❌ SIGMA MDX DEPLOY : Jeu non trouvé." }, { quoted: msg });
       return;
     }
-    
-    const game = data.results[0];
-    
-    const reply = `> ?? SIGMA MDX DEPLOY : ${game.name}
+
+    const top = results.slice(0, 3);
+    const lines = top.map((r, i) => `*${i + 1}. ${r.title}*\n${r.description || ""}\n🔗 ${r.link}`).join("\n\n");
+
+    const reply = `> 🎮 SIGMA MDX DEPLOY : ${search}
 🎨🎨🎨🎨🎨🎨
-?? Sortie: ${game.released || "N/A"}
-? Note: ${game.rating}/5
-?? Plateformes: ${game.platforms?.map(p => p.platform.name).slice(0, 3).join(", ") || "N/A"}
-🎨 Genres: ${game.genres?.map(g => g.name).slice(0, 3).join(", ") || "N/A"}
-?? ${game.website || "Pas de site"}`;
-    
+${lines}`;
+
     await sock.sendMessage(from, { text: reply }, { quoted: msg });
-    
+
   } catch (err) {
-    console.error("Erreur game :", err);
+    console.error("Erreur game :", err?.message || err);
     await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY : Service jeux indisponible." }, { quoted: msg });
   }
 }
