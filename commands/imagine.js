@@ -4,37 +4,21 @@ export const name = "imagine";
 export const description = "Genere une image a partir d'un prompt via AI";
 export const category = "AI";
 
-const IMAGE_APIS = [
-  {
-    name: "ShizoAPI",
-    call: async (prompt) => {
-      const response = await axios.get(`https://shizoapi.onrender.com/api/ai/imagine`, {
-        params: { apikey: "shizo", query: prompt },
-        responseType: "arraybuffer",
-        headers: { "User-Agent": "SIGMA-MDX/3.0" },
-        timeout: 30000
-      });
-      return Buffer.from(response.data);
-    }
-  },
-  {
-    name: "BK9",
-    call: async (prompt) => {
-      const response = await axios.get(`https://bk9.fun/ai/magicstudio`, {
-        params: { q: prompt },
-        responseType: "arraybuffer",
-        timeout: 30000
-      });
-      return Buffer.from(response.data);
-    }
-  }
-];
+async function generateImage(prompt) {
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+  const response = await axios.get(url, {
+    params: { width: 1024, height: 1024, nologo: true },
+    responseType: "arraybuffer",
+    timeout: 40000
+  });
+  return Buffer.from(response.data);
+}
 
 export async function execute(sock, msg, args) {
   const from = msg.key.remoteJid;
 
   try {
-    const rawText = args.join(" ").trim() || 
+    const rawText = args.join(" ").trim() ||
                     msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation?.trim() ||
                     '';
 
@@ -50,14 +34,11 @@ export async function execute(sock, msg, args) {
     const prompt = enhancePrompt(rawText);
     let imageBuffer = null;
 
-    for (const api of IMAGE_APIS) {
-      try {
-        imageBuffer = await api.call(prompt);
-        if (imageBuffer && imageBuffer.length > 1000) break;
-        imageBuffer = null;
-      } catch {
-        continue;
-      }
+    try {
+      imageBuffer = await generateImage(prompt);
+      if (!imageBuffer || imageBuffer.length < 1000) imageBuffer = null;
+    } catch (e) {
+      console.log("Imagine Pollinations failed:", e?.message);
     }
 
     if (!imageBuffer) {

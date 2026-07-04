@@ -2,25 +2,33 @@ import axios from "axios";
 
 export const name = "openai";
 
+const GIFTED_KEY = process.env.GIFTED_API_KEY || "gifted";
+
+function isValidAnswer(result) {
+  return typeof result === "string" && result.length > 0 && !/^request failed with status code/i.test(result);
+}
+
 const AI_APIS = [
   {
-    name: "GiftedTech",
+    name: "GiftedTech-Gemini",
     call: async (query) => {
-      const { data } = await axios.get("https://api.gifted.co.ke/api/ai/ai", {
-        params: { apikey: process.env.GIFTED_API_KEY || "gifted", q: query },
+      const { data } = await axios.get("https://api.gifted.co.ke/api/ai/gemini", {
+        params: { apikey: GIFTED_KEY, q: query },
         timeout: 15000
       });
-      return data?.result || data?.message || data?.answer || null;
+      const result = data?.result || data?.message || data?.answer;
+      return isValidAnswer(result) ? result : null;
     }
   },
   {
-    name: "BK9",
+    name: "GiftedTech-AI",
     call: async (query) => {
-      const { data } = await axios.get("https://bk9.fun/ai/GPT4o", {
-        params: { q: query },
+      const { data } = await axios.get("https://api.gifted.co.ke/api/ai/ai", {
+        params: { apikey: GIFTED_KEY, q: query },
         timeout: 15000
       });
-      return data?.BK9 || data?.result || null;
+      const result = data?.result || data?.message || data?.answer;
+      return isValidAnswer(result) ? result : null;
     }
   }
 ];

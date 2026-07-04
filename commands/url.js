@@ -35,18 +35,21 @@ export async function execute(sock, m, args) {
     const filePath = join(tempDir, `media_${Date.now()}.${ext}`);
     fs.writeFileSync(filePath, buffer);
 
-    // Upload vers catbox.moe
+    // Upload vers tmpfiles.org (catbox.moe n'accepte plus les uploads anonymes)
     const form = new FormData();
-    form.append("reqtype", "fileupload");
-    form.append("fileToUpload", fs.createReadStream(filePath));
+    form.append("file", fs.createReadStream(filePath));
 
-    const upload = await axios.post("https://catbox.moe/user/api.php", form, {
+    const upload = await axios.post("https://tmpfiles.org/api/v1/upload", form, {
       headers: form.getHeaders(),
+      timeout: 30000
     });
 
     fs.unlinkSync(filePath); // Nettoyage
 
-    const url = upload.data;
+    const rawUrl = upload.data?.data?.url;
+    if (!rawUrl) throw new Error("Upload échoué, aucune URL retournée.");
+    // tmpfiles.org sert le fichier via /dl/ pour un accès direct
+    const url = rawUrl.replace("tmpfiles.org/", "tmpfiles.org/dl/");
     await sock.sendMessage(
       m.key.remoteJid,
       { text: `> SIGMA MDX DEPLOY: ? URL générée : ${url}` },

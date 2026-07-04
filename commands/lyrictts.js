@@ -1,7 +1,9 @@
-import fetch from "node-fetch";
+import axios from "axios";
 
 export const name = "lyrictts";
 export const description = "Convert song lyrics to voice (TTS)";
+
+const GIFTED_KEY = process.env.GIFTED_API_KEY || "gifted";
 
 export async function execute(sock, m, args) {
   try {
@@ -10,40 +12,44 @@ export async function execute(sock, m, args) {
     if (!args.length || !args.join(" ").includes("|")) {
       return sock.sendMessage(
         jid,
-        { text: "> SIGMA MDX DEPLOY ?? Usage: .lyrictts artist | song" },
+        { text: "> SIGMA MDX DEPLOY ⚠️ Usage: .lyrictts artist | song" },
         { quoted: m }
       );
     }
 
     const [artist, title] = args.join(" ").split("|").map(v => v.trim());
 
-    // ===== LYRICS API =====
-    const lyricsURL = `https://lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
-    const lyricsRes = await fetch(lyricsURL);
-    const lyricsData = await lyricsRes.json();
+    // ===== LYRICS via Gifted =====
+    const { data: lyricsData } = await axios.get("https://api.gifted.co.ke/api/search/lyrics", {
+      params: { apikey: GIFTED_KEY, query: `${title} ${artist}` },
+      timeout: 20000
+    });
 
-    if (!lyricsData.lyrics) {
+    const lyricsResult = lyricsData?.result;
+    if (!lyricsData?.success || !lyricsResult?.lyrics) {
       return sock.sendMessage(
         jid,
-        { text: "> SIGMA MDX DEPLOY ? Lyrics not found." },
+        { text: "> SIGMA MDX DEPLOY ❌ Lyrics not found." },
         { quoted: m }
       );
     }
 
-    // Limite TTS (sécurité)
-    const text = lyricsData.lyrics
+    const text = lyricsResult.lyrics
       .replace(/\n+/g, ". ")
       .slice(0, 1800);
 
-    // ===== GOOGLE TTS =====
+    // ===== GOOGLE TTS (free, keyless) =====
     const ttsURL =
       "https://translate.google.com/translate_tts" +
       `?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(text)}`;
 
-    const audioRes = await fetch(ttsURL);
-    const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+    const audioRes = await axios.get(ttsURL, {
+      responseType: "arraybuffer",
+      headers: { "User-Agent": "Mozilla/5.0" },
+      timeout: 20000
+    });
+    const audioBuffer = Buffer.from(audioRes.data);
 
-    // ===== SEND VOICE =====
     await sock.sendMessage(
       jid,
       {
@@ -57,7 +63,7 @@ export async function execute(sock, m, args) {
   } catch (err) {
     await sock.sendMessage(
       m.key.remoteJid,
-      { text: `? SIGMA MDX DEPLOY TTS Error: ${err.message}` },
+      { text: `❌ SIGMA MDX DEPLOY TTS Error: ${err.message}` },
       { quoted: m }
     );
   }

@@ -3,65 +3,33 @@ import yts from "yt-search";
 
 export const name = "play";
 
-const APIS = [
-  {
-    name: "apis-keith",
-    getAudio: async (url) => {
-      const res = await axios.get(`https://apis-keith.vercel.app/download/dlmp3?url=${encodeURIComponent(url)}`, { timeout: 20000 });
-      return res.data?.result?.downloadUrl || res.data?.downloadUrl;
-    }
-  },
-  {
-    name: "api1",
-    search: (q) => `https://api.vreden.my.id/api/ytplay?query=${encodeURIComponent(q)}`,
-    parse: (data) => ({
-      title: data.result?.title || data.title,
-      duration: data.result?.duration || data.duration || "N/A",
-      thumbnail: data.result?.thumbnail || data.thumb || data.thumbnail,
-      video_url: data.result?.url || data.url,
-      download_url: data.result?.download?.url || data.result?.audio || data.audio
-    })
-  },
-  {
-    name: "api2",
-    search: (q) => `https://api.siputzx.my.id/api/d/ytmp3?url=ytsearch:${encodeURIComponent(q)}`,
-    parse: (data) => ({
-      title: data.data?.title || data.title,
-      duration: data.data?.duration || "N/A",
-      thumbnail: data.data?.thumbnail || data.thumb,
-      video_url: data.data?.url || data.url,
-      download_url: data.data?.dl || data.data?.download || data.download
-    })
-  },
-  {
-    name: "api3",
-    search: (q) => `https://api.nyxs.pw/dl/yt-search?query=${encodeURIComponent(q)}`,
-    parse: (data) => ({
-      title: data.result?.[0]?.title || data.title,
-      duration: data.result?.[0]?.duration || "N/A",
-      thumbnail: data.result?.[0]?.thumbnail || data.thumb,
-      video_url: data.result?.[0]?.url || data.url,
-      download_url: data.result?.[0]?.audio || null
-    })
-  }
-];
+const GIFTED_KEY = process.env.GIFTED_API_KEY || "gifted";
 
 async function tryApis(query) {
-  for (const api of APIS) {
-    try {
-      if (api.search) {
-        const url = api.search(query);
-        const { data } = await axios.get(url, { timeout: 15000 });
-        if (data && (data.status || data.result || data.data)) {
-          const parsed = api.parse(data);
-          if (parsed.title && parsed.download_url) return parsed;
-        }
-      }
-    } catch (e) {
-      console.log(`Play API ${api.name} failed:`, e.message);
-    }
+  try {
+    const search = await yts(query);
+    const data = search.videos?.[0];
+    if (!data?.url) return null;
+
+    const { data: apiRes } = await axios.get("https://api.gifted.co.ke/api/download/ytmp3v2", {
+      params: { apikey: GIFTED_KEY, url: data.url },
+      timeout: 25000
+    });
+
+    const result = apiRes?.result;
+    if (!result?.download_url) return null;
+
+    return {
+      title: result.title || data.title,
+      duration: data.timestamp || "N/A",
+      thumbnail: result.thumbnail || data.thumbnail,
+      video_url: data.url,
+      download_url: result.download_url
+    };
+  } catch (e) {
+    console.log("Play Gifted ytmp3v2 failed:", e.message);
+    return null;
   }
-  return null;
 }
 
 export async function execute(sock, msg, args, from) {
@@ -77,29 +45,7 @@ export async function execute(sock, msg, args, from) {
       text: `> SIGMA MDX DEPLOY : 🔍 Recherche de *${title}* en cours...`
     }, { quoted: msg });
 
-    let video = null;
-
-    // 1) Essai yt-search + apis-keith (comme plugin play2)
-    try {
-      const search = await yts(title);
-      const data = search.videos?.[0];
-      if (data?.url) {
-        const audioUrl = await APIS[0].getAudio(data.url);
-        if (audioUrl) {
-          video = {
-            title: data.title,
-            duration: data.timestamp || "N/A",
-            thumbnail: data.thumbnail,
-            video_url: data.url,
-            download_url: audioUrl
-          };
-        }
-      }
-    } catch (e) {
-      console.log("Play yt-search/apis-keith:", e?.message);
-    }
-
-    if (!video) video = await tryApis(title);
+    const video = await tryApis(title);
 
     if (!video || !video.download_url) {
       return await sock.sendMessage(from, {

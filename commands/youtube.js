@@ -1,4 +1,8 @@
+import axios from "axios";
+
 export const name = "youtube";
+
+const GIFTED_KEY = process.env.GIFTED_API_KEY || "gifted";
 
 export async function execute(sock, msg, args) {
   const from = msg.key.remoteJid;
@@ -11,50 +15,51 @@ export async function execute(sock, msg, args) {
     }
 
     const youtubeUrl = args[0];
-    const format = args[1] || "mp4";
-    
-    // API YouTube
-    const apiUrl = `https://delirius-apiofc.vercel.app/download/youtube?url=${encodeURIComponent(youtubeUrl)}&format=${format}`;
-    const res = await fetch(apiUrl);
-    const data = await res.json();
+    const format = (args[1] || "mp4").toLowerCase();
 
-    if (!data || !data.status || !data.data) {
+    const endpoint = format === "mp3" ? "ytmp3v2" : "ytmp4";
+    const apiUrl = `https://api.gifted.co.ke/api/download/${endpoint}`;
+    const { data } = await axios.get(apiUrl, {
+      params: { apikey: GIFTED_KEY, url: youtubeUrl },
+      timeout: 30000
+    });
+
+    const result = data?.result;
+    if (!data?.success || !result?.download_url) {
       return await sock.sendMessage(from, {
-        text: "> ?? SIGMA MDX DEPLOY : échec de la récupération de la vidéo YouTube.",
+        text: "> ❌ SIGMA MDX DEPLOY : échec de la récupération de la vidéo YouTube.",
       }, { quoted: msg });
     }
 
-    const { title, duration, channel, views, url } = data.data;
+    const { title, quality, download_url } = result;
 
-    const caption = `> ❌ SIGMA MDX DEPLOY ?
+    const caption = `> ❌ SIGMA MDX DEPLOY
 
 > ℹ️ INFORMATIONS
-> ?? Titre : ${title.substring(0, 60)}...
-> ?? Durée : ${duration}
-> ?? Chaéne : ${channel}
-> 🎨 Vues : ${views}
-> ?? Format : ${format.toUpperCase()}
-> ?? Téléchargement terminé ?
+> 🎬 Titre : ${(title || "N/A").substring(0, 60)}
+> ⭐ Qualité : ${quality || "N/A"}
+> 📁 Format : ${format.toUpperCase()}
+> ✅ Téléchargement terminé
 
 > Dev by SIGMA MDX`;
 
     if (format === "mp3") {
       await sock.sendMessage(from, {
-        audio: { url: url },
+        audio: { url: download_url },
         mimetype: 'audio/mpeg',
         caption
       }, { quoted: msg });
     } else {
       await sock.sendMessage(from, {
-        video: { url: url },
+        video: { url: download_url },
         caption
       }, { quoted: msg });
     }
 
   } catch (err) {
-    console.error("? Erreur YouTube :", err);
+    console.error("Erreur YouTube :", err?.message || err);
     await sock.sendMessage(from, {
-      text: `> ❌ SIGMA MDX DEPLOY ?\n\n> ?? Service temporairement indisponible.\n> Essayez: https://y2mate.com`
+      text: `> ❌ SIGMA MDX DEPLOY : Service temporairement indisponible.\nDétails : ${err?.message || err}`
     }, { quoted: msg });
   }
 }
