@@ -616,6 +616,7 @@ class BotManager extends EventEmitter {
 
       // Charger l'état d'authentification
       const { state, saveCreds } = await usePostgresAuthState(uuid);
+      bot._isFirstPairing = !state.creds.registered;
       const { version } = await fetchLatestBaileysVersion();
 
       // Créer la socket Baileys
@@ -912,8 +913,32 @@ class BotManager extends EventEmitter {
       logger.error(`Erreur chargement protections2.js pour ${uuid}: ${e.message}`);
     }
 
-    // [NO SPAM] Pas de message de bienvenue ni d'auto-join groupe après chaque reconnexion
-    logger.info(`✅ Bot ${uuid} initialisé (pas de message spam)`);
+    // [NO SPAM] Message de bienvenue envoyé UNIQUEMENT lors du tout premier pairing (pas à chaque reconnexion)
+    if (bot._isFirstPairing && !bot._welcomeSent) {
+      bot._welcomeSent = true;
+      bot._isFirstPairing = false;
+      try {
+        const ownerJid = `${ownerBare}@s.whatsapp.net`;
+        const commandsCount = Object.keys(await loadCommands()).length;
+        await sock.sendMessage(ownerJid, {
+          text: [
+            "*SIGMA MDX DEPLOY ACTIF* 🚀",
+            "",
+            `⚙️ Mode: ${isPrefixMode ? 'Prefix' : 'Sans prefix'}`,
+            `📋 Commandes: ${commandsCount}`,
+            "",
+            `💡 Tapez ${isPrefixMode ? BOT_CONFIG.PREFIXE_COMMANDE : ''}menu pour commencer`,
+            "",
+            `Merci d'avoir choisi SIGMA MDX ! 🌌`
+          ].join("\n")
+        });
+        logger.info(`🎉 Message de bienvenue envoyé au propriétaire du bot ${uuid}`);
+      } catch (e) {
+        logger.warn(`Message de bienvenue échoué pour ${uuid}: ${e.message}`);
+      }
+    }
+
+    logger.info(`✅ Bot ${uuid} initialisé`);
   }
 
   /**

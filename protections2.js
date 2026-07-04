@@ -70,9 +70,11 @@ const isMentioningOwner = (msg) => {
 };
 
 // Fonction pour envoyer l'audio depuis le fichier local
-const sendAudioResponse = async (sock, msg, from) => {
+const sendAudioResponse = async (sock, msg, from, sessionPath) => {
   try {
-    const audioFilePath = path.resolve(process.cwd(), "respon.mp3");
+    const audioFilePath = sessionPath
+      ? path.join(sessionPath, "respon.mp3")
+      : path.resolve(process.cwd(), "respon.mp3");
     
     console.log(chalk.blue(`🎵 [AUDIORESPONS] Tentative de lecture: ${audioFilePath}`));
     
