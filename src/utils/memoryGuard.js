@@ -7,8 +7,8 @@
 import logger from "./logger.js";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-const HEAP_WARNING_MB = parseInt(process.env.HEAP_WARNING_MB || "512");
-const HEAP_CRITICAL_MB = parseInt(process.env.HEAP_CRITICAL_MB || "1024");
+const HEAP_WARNING_MB = parseInt(process.env.HEAP_WARNING_MB || "8000");
+const HEAP_CRITICAL_MB = parseInt(process.env.HEAP_CRITICAL_MB || "12000");
 const CHECK_INTERVAL_MS = parseInt(process.env.MEMORY_CHECK_INTERVAL_MS || "30000");
 
 let lastWarningAt = 0;

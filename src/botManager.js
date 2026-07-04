@@ -649,7 +649,7 @@ class BotManager extends EventEmitter {
 
       // [AMÉLIORÉ] Rate-limit/queue pour les envois sortants avec limite de taille
       // Protège contre la saturation mémoire en cas de spam
-      const minDelayMs = parseInt(process.env.BOT_SEND_MIN_DELAY_MS || "80");
+      const minDelayMs = parseInt(process.env.BOT_SEND_MIN_DELAY_MS || "350");
       const maxQueueSize = parseInt(process.env.BOT_MAX_QUEUE_SIZE || "500");
       bot.sendQueue = [];
       bot.sendQueueRunning = false;

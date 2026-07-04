@@ -54,13 +54,13 @@ export const config = {
 
   // Bots
   bots: {
-    maxBots: getInt("MAX_BOTS", 100),
+    maxBots: getInt("MAX_BOTS", 300),
     sendMinDelayMs: getInt("BOT_SEND_MIN_DELAY_MS", 350),
     maxQueueSize: getInt("BOT_MAX_QUEUE_SIZE", 500),
     sendTtlMs: getInt("BOT_SEND_TTL_MS", 30000),
     cmdTimeoutMs: getInt("CMD_TIMEOUT_MS", 15000),
-    reconnectConcurrency: getInt("BOT_RECONNECT_CONCURRENCY", 5),
-    reconnectDelayMs: getInt("BOT_RECONNECT_DELAY_MS", 250),
+    reconnectConcurrency: getInt("BOT_RECONNECT_CONCURRENCY", 15),
+    reconnectDelayMs: getInt("BOT_RECONNECT_DELAY_MS", 150),
   },
 
   // Rate limiting commandes
