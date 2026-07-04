@@ -106,7 +106,7 @@ const MANUAL_CATEGORIES = [
   {
     key: "ai",
     title: "AI Menu",
-    names: ["ai", "openai", "deepseek", "imagine", "k-video", "sigmachat", "sigmavoice", "SIGMA MDX", "SIGMA MDXts"]
+    names: ["ai", "openai", "deepseek", "imagine", "k-video", "sigmachat", "sigmachat-ib", "sigmavoice", "SIGMA MDX", "SIGMA MDXts"]
   },
   {
     key: "tools",
@@ -121,7 +121,7 @@ const MANUAL_CATEGORIES = [
   {
     key: "search",
     title: "Search Menu",
-    names: ["anime", "manga", "film", "artist", "car", "muscu", "cours", "soulmate", "hentai"]
+    names: ["anime", "manga", "film", "artist", "car", "muscu", "cours", "soulmate", "hentai", "game"]
   },
   {
     key: "group",
