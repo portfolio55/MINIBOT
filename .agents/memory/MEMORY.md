@@ -1,0 +1,1 @@
+- [Baileys package firewall block](baileys-git-dependency-block.md) — WhatsApp Baileys forks/versions declaring libsignal as a git dependency get blocked by Replit's npm security firewall; use official `@whiskeysockets/baileys@^7.0.0-rc` (npm-published libsignal) instead.
