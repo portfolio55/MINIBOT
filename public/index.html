@@ -307,6 +307,59 @@
             margin-bottom: 5px;
             color: #333;
         }
+
+        .plans-info {
+            margin-bottom: 24px;
+            padding: 18px;
+            background: #f8f9fb;
+            border: 1px solid #e6e8ee;
+            border-radius: 12px;
+        }
+        .plans-info-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .plans-info-sub {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .plan-chip {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px 8px;
+            text-align: center;
+        }
+        .plan-chip.trial {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #eef1ff 0%, #f3ecfb 100%);
+            border-color: #c9d0f7;
+        }
+        .plan-chip-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #333;
+        }
+        .plan-chip-price {
+            font-size: 15px;
+            font-weight: 800;
+            color: #667eea;
+            margin-top: 2px;
+        }
+        .plans-info-note {
+            font-size: 11px;
+            color: #888;
+            margin-top: 10px;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -321,6 +374,34 @@
 
         <h1>🚀 SIGMA MDX DEPLOY</h1>
         <p class="subtitle">Connectez votre WhatsApp en quelques secondes</p>
+
+        <div class="plans-info">
+            <div class="plans-info-title">💳 Ce qui vous attend</div>
+            <div class="plans-info-sub">Votre bot fonctionne selon un abonnement. Voici les tarifs :</div>
+            <div class="plans-grid">
+                <div class="plan-chip trial">
+                    <div class="plan-chip-label">🎁 Essai gratuit (1er appairage)</div>
+                    <div class="plan-chip-price">24h offertes</div>
+                </div>
+                <div class="plan-chip">
+                    <div class="plan-chip-label">2 jours</div>
+                    <div class="plan-chip-price">500 FCFA</div>
+                </div>
+                <div class="plan-chip">
+                    <div class="plan-chip-label">1 semaine</div>
+                    <div class="plan-chip-price">1000 FCFA</div>
+                </div>
+                <div class="plan-chip">
+                    <div class="plan-chip-label">1 mois</div>
+                    <div class="plan-chip-price">3000 FCFA</div>
+                </div>
+            </div>
+            <p class="plans-info-note">
+                À la fin de votre essai ou de votre abonnement, le bot se déconnecte automatiquement.
+                Un identifiant et un mot de passe vous seront envoyés par WhatsApp après l'appairage
+                pour gérer votre compte et renouveler votre abonnement sur la page <a href="/login.html">Connexion</a>.
+            </p>
+        </div>
 
         <form id="pairingForm">
             <div class="form-group">
