@@ -1,10 +1,12 @@
-import { getGroupProtections, setGroupProtection, createGroupManager } from "../groupManager.js";
+import { createGroupManager } from "../groupManager.js";
 import { getSudoList, getOwners } from "../src/utils/cmdUtils.js";
 
 export const name = "antipromote";
 
 export async function execute(sock, msg, args, from, botContext) {
   if (!from.endsWith("@g.us")) return sock.sendMessage(from, { text: "Groupe uniquement." }, { quoted: msg });
+
+  const { getGroupProtections, setGroupProtection } = botContext?.groupManager || createGroupManager(botContext?.sessionPath);
 
   const sender = msg.key.participant || from;
   const senderNum = getBareNumber(sender);
@@ -35,7 +37,6 @@ export async function execute(sock, msg, args, from, botContext) {
 
 async function isGroupAdmin(sock, groupJid, userJid) {
   try {
-    const { getGroupProtections: _getGP, setGroupProtection: _setGP } = createGroupManager(botContext?.sessionPath);
     const meta = await sock.groupMetadata(groupJid);
     return meta.participants.some(p => p.id === userJid && p.admin);
   } catch { return false; }

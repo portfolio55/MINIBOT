@@ -12,7 +12,7 @@ export const aliases = ["akc", "autosigma", "autoai"];
 
 export async function execute(sock, msg, args, from, botContext) {
   try {
-    const { getGroupProtections: _getGP, setGroupProtection: _setGP } = createGroupManager(botContext?.sessionPath);
+    const { getGroupProtections: _getGP, setGroupProtection: _setGP } = botContext?.groupManager || createGroupManager(botContext?.sessionPath);
     if (!from.endsWith("@g.us")) {
       await sock.sendMessage(from, { text: "? Cette commande est réservée aux groupes." }, { quoted: msg });
       return;

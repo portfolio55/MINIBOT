@@ -1,2 +1,3 @@
 - [Baileys package firewall block](baileys-git-dependency-block.md) — WhatsApp Baileys forks/versions declaring libsignal as a git dependency get blocked by Replit's npm security firewall; use official `@whiskeysockets/baileys@^7.0.0-rc` (npm-published libsignal) instead.
 - [Gifted API integration](gifted-api-integration.md) — real domain is api.gifted.co.ke (not giftedtech.co.ke/.web.id); many endpoint param names/existence must be verified by probing, not trusted from docs page or old bot code.
+- [Per-bot groupManager cache split](per-bot-groupmanager-cache-split.md) — group protection toggles (welcome, antilink, etc.) can save to DB but never take effect if a command creates its own createGroupManager() instead of reusing botContext.groupManager.

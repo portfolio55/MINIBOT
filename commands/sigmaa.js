@@ -8,7 +8,7 @@ export const name = "sigmavoice";
 
 export async function execute(sock, msg, args, from, botContext) {
   try {
-    const { getGroupProtections: _getGP, setGroupProtection: _setGP } = createGroupManager(botContext?.sessionPath);
+    const { getGroupProtections: _getGP, setGroupProtection: _setGP } = botContext?.groupManager || createGroupManager(botContext?.sessionPath);
     // Vérifie que c'est dans un groupe
     if (!from.endsWith("@g.us")) {
       await sock.sendMessage(from, { 

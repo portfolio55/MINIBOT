@@ -29,7 +29,7 @@ export async function execute(sock, msg, args, from, botContext) {
       return;
     }
 
-    const { getGroupProtections } = createGroupManager(botContext?.sessionPath);
+    const { getGroupProtections } = botContext?.groupManager || createGroupManager(botContext?.sessionPath);
     const protections = getGroupProtections(from);
 
     const protectionList = [

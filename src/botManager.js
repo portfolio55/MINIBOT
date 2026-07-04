@@ -898,7 +898,8 @@ class BotManager extends EventEmitter {
 
     // Initialiser les protections (per-bot isolation)
     try {
-      bot.protectionManager = initProtections(sock, ownerBare, bot.sessionPath);
+      if (!bot.groupManager) bot.groupManager = createGroupManager(bot.sessionPath);
+      bot.protectionManager = initProtections(sock, ownerBare, bot.sessionPath, bot.groupManager);
       logger.info(`Protections.js chargé pour ${uuid}`);
     } catch (e) {
       logger.error(`Erreur chargement protections.js pour ${uuid}: ${e.message}`);
@@ -1010,7 +1011,7 @@ class BotManager extends EventEmitter {
 
     logger.info(`⚡ ${cmdName} par ${senderNum}`);
 
-    const botContext = { sessionPath: bot.sessionPath, owners, sudoList, uuid, isOwner, isSudo };
+    const botContext = { sessionPath: bot.sessionPath, owners, sudoList, uuid, isOwner, isSudo, groupManager: bot.groupManager };
     // [AMÉLIORÉ] Timeout configurable par commande, avec meilleure gestion des erreurs
     const CMD_TIMEOUT_MS = parseInt(process.env.CMD_TIMEOUT_MS || "60000");
     const cmdStartTime = Date.now();

@@ -808,7 +808,7 @@ export function goodbye(sock, getGP = getGroupProtections, manager = null) {
 }
 
 // =================== INIT PROTECTIONS ===================
-export function initProtections(sock, ownerNumber, sessionPath) {
+export function initProtections(sock, ownerNumber, sessionPath, sharedGroupManager = null) {
   if (!ownerNumber) {
     ProtectionLogger.error('INIT', 'ownerNumber manquant !');
     return null;
@@ -818,7 +818,9 @@ export function initProtections(sock, ownerNumber, sessionPath) {
   manager._autoVVIB = { enabled: true };
   manager._autoVVConfig = { ignoreAdmins: false, sendReaction: true };
 
-  const _gm = createGroupManager(sessionPath);
+  // Utilise le groupManager partagé du bot (même cache que les commandes .welcome, .antilink, etc.)
+  // pour éviter que les toggles écrits par les commandes ne soient invisibles aux listeners d'événements.
+  const _gm = sharedGroupManager || createGroupManager(sessionPath);
   const _getGP = _gm.getGroupProtections;
 
   const availableProtections = [

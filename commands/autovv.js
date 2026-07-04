@@ -14,7 +14,7 @@ export async function execute(sock, msg, args, from, botContext) {
   try {
     if (!from) from = msg.key.remoteJid;
     
-    const gm = createGroupManager(botContext?.sessionPath);
+    const gm = botContext?.groupManager || createGroupManager(botContext?.sessionPath);
     const getGroupProtections = gm.getGroupProtections;
     const setGroupProtection = gm.setGroupProtection;
 
