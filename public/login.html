@@ -3,12 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGMA MDX DEPLOY - Connexion</title>
+    <title>SIGMA MDX DEPLOY — Connexion</title>
     <style>
+        :root {
+            --bg: #0a0a0d;
+            --panel: #16161c;
+            --border: #2a2a34;
+            --text: #f4f4f6;
+            --muted: #9a9aa8;
+            --gold: #f5b301;
+            --gold-soft: #ffd257;
+            --danger: #ff5c5c;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -16,58 +27,82 @@
             padding: 20px;
         }
         .card {
-            background: white;
+            background: var(--panel);
+            border: 1px solid var(--border);
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
             padding: 40px;
             width: 100%;
             max-width: 400px;
         }
-        h1 { text-align: center; color: #333; margin-bottom: 8px; font-size: 24px; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
-        label { display: block; font-weight: 600; color: #555; margin-bottom: 6px; font-size: 14px; }
+        .brand-mark {
+            width: 44px; height: 44px; margin: 0 auto 16px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--gold) 0%, #c98a00 100%);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 900; color: #0a0a0d;
+        }
+        h1 { text-align: center; margin-bottom: 8px; font-size: 24px; font-weight: 800; }
+        .subtitle { text-align: center; color: var(--muted); margin-bottom: 30px; font-size: 14px; }
+        label { display: block; font-weight: 700; color: var(--text); margin-bottom: 6px; font-size: 13.5px; }
         input {
             width: 100%;
             padding: 12px 14px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
             margin-bottom: 18px;
             font-size: 15px;
+            background: #0d0d10;
+            color: var(--text);
+            font-family: inherit;
         }
-        input:focus { outline: none; border-color: #667eea; }
+        input::placeholder { color: #55555f; }
+        input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px rgba(245,179,1,0.12); }
         button {
             width: 100%;
             padding: 14px;
             border: none;
-            border-radius: 8px;
-            background: #667eea;
-            color: white;
+            border-radius: 10px;
+            background: var(--gold);
+            color: #0a0a0d;
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
+            transition: background .15s, transform .15s;
         }
-        button:hover:not(:disabled) { background: #5563c1; }
-        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        button:hover:not(:disabled) { background: var(--gold-soft); transform: translateY(-1px); }
+        button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
         .alert {
-            padding: 12px;
-            border-radius: 8px;
+            padding: 12px 14px;
+            border-radius: 10px;
             margin-bottom: 18px;
             display: none;
-            font-size: 14px;
+            font-size: 13.5px;
+            font-weight: 600;
         }
         .alert.show { display: block; }
-        .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert.error { background: rgba(255,92,92,0.12); color: var(--danger); }
         .hint {
             text-align: center;
             margin-top: 20px;
             font-size: 13px;
-            color: #888;
+            color: var(--muted);
         }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--muted);
+            text-decoration: none;
+        }
+        .back-link:hover { color: var(--gold); }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>🔑 Connexion</h1>
+        <div class="brand-mark">Σ</div>
+        <h1>Connexion</h1>
         <p class="subtitle">Accède à ton compte SIGMA MDX</p>
 
         <div class="alert error" id="alert"></div>
@@ -83,6 +118,7 @@
         </form>
 
         <p class="hint">Tes identifiants ont été envoyés sur WhatsApp lors du premier appairage de ton bot.</p>
+        <a href="/" class="back-link">← Retour à l'accueil</a>
     </div>
 
     <script>
