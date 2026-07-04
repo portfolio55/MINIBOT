@@ -87,6 +87,24 @@ export const config = {
     giftedApiKey: getString("GIFTED_API_KEY", "gifted"),
     openaiApiKey: getString("OPENAI_API_KEY"),
   },
+
+  // Abonnements payants
+  subscription: {
+    checkIntervalMs: getInt("SUBSCRIPTION_CHECK_INTERVAL_MS", 60000),
+  },
+
+  // Paiement MoneyFusion
+  moneyfusion: {
+    apiUrl: getString("MONEYFUSION_API_URL"),
+  },
+};
+
+// Plans d'abonnement (durée en ms, prix en FCFA)
+export const SUBSCRIPTION_PLANS = {
+  trial:  { label: "Essai gratuit",  price: 0,    durationMs: 24 * 60 * 60 * 1000 },
+  "2days": { label: "2 jours",       price: 500,  durationMs: 2 * 24 * 60 * 60 * 1000 },
+  week:   { label: "1 semaine",      price: 1000, durationMs: 7 * 24 * 60 * 60 * 1000 },
+  month:  { label: "1 mois",         price: 3000, durationMs: 30 * 24 * 60 * 60 * 1000 },
 };
 
 export default config;

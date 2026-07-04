@@ -260,13 +260,15 @@
                         <th>Numéro</th>
                         <th>Token</th>
                         <th>Statut</th>
+                        <th>Abonnement</th>
+                        <th>Expire le</th>
                         <th>Créé le</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="botsTableBody">
                     <tr>
-                        <td colspan="6" style="text-align: center; padding: 40px;">
+                        <td colspan="8" style="text-align: center; padding: 40px;">
                             Chargement...
                         </td>
                     </tr>
@@ -338,26 +340,40 @@
                 tbody.innerHTML = '';
 
                 if (data.bots.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;">Aucun bot déployé</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">Aucun bot déployé</td></tr>';
                     return;
                 }
+
+                const PLAN_LABELS = { trial: 'Essai', '2days': '2 jours', week: '1 semaine', month: '1 mois' };
 
                 data.bots.forEach(bot => {
                     const row = document.createElement('tr');
                     const createdAt = new Date(bot.createdAt).toLocaleString('fr-FR');
                     const status = bot.socketStatus || bot.status || 'unknown';
+                    const plan = bot.subscriptionPlan ? (PLAN_LABELS[bot.subscriptionPlan] || bot.subscriptionPlan) : '-';
+                    const expiresAt = bot.subscriptionExpiresAt ? new Date(bot.subscriptionExpiresAt) : null;
+                    const expiresLabel = expiresAt ? expiresAt.toLocaleString('fr-FR') : '-';
+                    const expiresColor = expiresAt && expiresAt < new Date() ? 'color: #dc3545; font-weight: 600;' : '';
 
                     row.innerHTML = `
                         <td style="font-family: monospace; font-size: 11px;">${bot.uuid.substring(0, 8)}...</td>
                         <td>${bot.phoneNumber || '-'}</td>
                         <td class="token-cell" title="${bot.token}">${bot.token.substring(0, 20)}...</td>
                         <td><span class="status-badge ${status}">${status}</span></td>
+                        <td>${plan}</td>
+                        <td style="${expiresColor}">${expiresLabel}</td>
                         <td>${createdAt}</td>
                         <td class="action-buttons">
                             <button class="btn-action btn-start" onclick="adminAction('${bot.uuid}', 'start')">Start</button>
                             <button class="btn-action btn-stop" onclick="adminAction('${bot.uuid}', 'stop')">Stop</button>
                             <button class="btn-action btn-restart" onclick="adminAction('${bot.uuid}', 'restart')">Restart</button>
                             <button class="btn-action btn-delete" onclick="adminAction('${bot.uuid}', 'delete')">Delete</button>
+                            <select id="plan-${bot.uuid}" style="font-size: 11px; padding: 4px;">
+                                <option value="2days">2j/500F</option>
+                                <option value="week">7j/1000F</option>
+                                <option value="month">30j/3000F</option>
+                            </select>
+                            <button class="btn-action btn-start" onclick="extendSubscription('${bot.uuid}')">+Ajouter</button>
                         </td>
                     `;
                     tbody.appendChild(row);
@@ -399,6 +415,38 @@
                 }
 
                 showAlert(`Action ${action} exécutée avec succès`, 'success');
+                await loadBots();
+            } catch (error) {
+                showAlert(`Erreur : ${error.message}`, 'error');
+            }
+        }
+
+        async function extendSubscription(uuid) {
+            if (!adminPassword) {
+                showAlert('Veuillez vous authentifier', 'error');
+                return;
+            }
+
+            const select = document.getElementById(`plan-${uuid}`);
+            const plan = select ? select.value : '2days';
+
+            try {
+                const response = await fetch(`/api/admin/bot/${uuid}/extend-subscription`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + adminPassword
+                    },
+                    body: JSON.stringify({ plan })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur lors de la prolongation');
+                }
+
+                showAlert('Abonnement prolongé avec succès', 'success');
                 await loadBots();
             } catch (error) {
                 showAlert(`Erreur : ${error.message}`, 'error');

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA MDX DEPLOY - Connexion</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 { text-align: center; color: #333; margin-bottom: 8px; font-size: 24px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+        label { display: block; font-weight: 600; color: #555; margin-bottom: 6px; font-size: 14px; }
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            font-size: 15px;
+        }
+        input:focus { outline: none; border-color: #667eea; }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover:not(:disabled) { background: #5563c1; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            display: none;
+            font-size: 14px;
+        }
+        .alert.show { display: block; }
+        .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .hint {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔑 Connexion</h1>
+        <p class="subtitle">Accède à ton compte SIGMA MDX</p>
+
+        <div class="alert error" id="alert"></div>
+
+        <form id="loginForm">
+            <label for="username">Identifiant</label>
+            <input type="text" id="username" required autocomplete="username">
+
+            <label for="password">Mot de passe</label>
+            <input type="password" id="password" required autocomplete="current-password">
+
+            <button type="submit" id="btnLogin">Se connecter</button>
+        </form>
+
+        <p class="hint">Tes identifiants ont été envoyés sur WhatsApp lors du premier appairage de ton bot.</p>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const alertDiv = document.getElementById('alert');
+        const btn = document.getElementById('btnLogin');
+
+        function showError(message) {
+            alertDiv.textContent = message;
+            alertDiv.classList.add('show');
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            alertDiv.classList.remove('show');
+            btn.disabled = true;
+            btn.textContent = 'Connexion...';
+
+            try {
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value;
+
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erreur de connexion');
+                }
+
+                window.location.href = '/account.html';
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Se connecter';
+            }
+        });
+    </script>
+</body>
+</html>

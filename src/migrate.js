@@ -214,8 +214,31 @@ async function ensureTables() {
       phone_number VARCHAR(30) NOT NULL,
       token VARCHAR(100) NOT NULL,
       status VARCHAR(30) DEFAULT 'pairing',
+      username VARCHAR(50) UNIQUE,
+      password_hash TEXT,
+      subscription_plan VARCHAR(20) DEFAULT 'trial',
+      subscription_expires_at TIMESTAMPTZ,
+      trial_used BOOLEAN DEFAULT false,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  // [ABONNEMENTS] Colonnes ajoutées après coup — migration idempotente pour bases existantes
+  await query(`ALTER TABLE bots ADD COLUMN IF NOT EXISTS username VARCHAR(50) UNIQUE`);
+  await query(`ALTER TABLE bots ADD COLUMN IF NOT EXISTS password_hash TEXT`);
+  await query(`ALTER TABLE bots ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(20) DEFAULT 'trial'`);
+  await query(`ALTER TABLE bots ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMPTZ`);
+  await query(`ALTER TABLE bots ADD COLUMN IF NOT EXISTS trial_used BOOLEAN DEFAULT false`);
+  await query(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id SERIAL PRIMARY KEY,
+      uuid VARCHAR(36) NOT NULL REFERENCES bots(uuid) ON DELETE CASCADE,
+      plan VARCHAR(20) NOT NULL,
+      amount INTEGER NOT NULL,
+      mf_token VARCHAR(100) UNIQUE,
+      status VARCHAR(20) DEFAULT 'pending',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      confirmed_at TIMESTAMPTZ
     )
   `);
   await query(`
@@ -259,7 +282,11 @@ async function ensureIndexes() {
     `CREATE INDEX IF NOT EXISTS idx_baileys_auth_uuid ON baileys_auth(uuid)`,
     `CREATE INDEX IF NOT EXISTS idx_baileys_auth_id ON baileys_auth(uuid, key)`,
     `CREATE INDEX IF NOT EXISTS idx_group_protections_jid ON group_protections(group_jid, uuid)`,
-    `CREATE INDEX IF NOT EXISTS idx_bot_config_uuid ON bot_config(uuid)`
+    `CREATE INDEX IF NOT EXISTS idx_bot_config_uuid ON bot_config(uuid)`,
+    `CREATE INDEX IF NOT EXISTS idx_bots_username ON bots(username)`,
+    `CREATE INDEX IF NOT EXISTS idx_bots_subscription_expires ON bots(subscription_expires_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_payments_uuid ON payments(uuid)`,
+    `CREATE INDEX IF NOT EXISTS idx_payments_mf_token ON payments(mf_token)`
   ];
   for (const sql of indexes) {
     try {

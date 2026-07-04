@@ -129,10 +129,102 @@ export async function dbDeleteBot(uuid) {
 export async function dbListAllBots() {
   const res = await query(
     `SELECT uuid, phone_number AS "phoneNumber", token, status,
+            username, subscription_plan AS "subscriptionPlan",
+            subscription_expires_at AS "subscriptionExpiresAt", trial_used AS "trialUsed",
             created_at AS "createdAt", updated_at AS "lastConnected"
      FROM bots ORDER BY created_at DESC`
   );
   return res.rows;
+}
+
+// ─── ABONNEMENTS / COMPTES UTILISATEURS ───────────────────────────────────
+
+export async function dbSetBotAccount(uuid, { username, passwordHash, subscriptionPlan, subscriptionExpiresAt, trialUsed }) {
+  await query(
+    `UPDATE bots
+     SET username = COALESCE($2, username),
+         password_hash = COALESCE($3, password_hash),
+         subscription_plan = COALESCE($4, subscription_plan),
+         subscription_expires_at = COALESCE($5::timestamptz, subscription_expires_at),
+         trial_used = COALESCE($6, trial_used),
+         updated_at = NOW()
+     WHERE uuid = $1`,
+    [uuid, username || null, passwordHash || null, subscriptionPlan || null, subscriptionExpiresAt || null, trialUsed ?? null]
+  );
+}
+
+export async function dbGetBotByUsername(username) {
+  const res = await query(
+    `SELECT uuid, phone_number AS "phoneNumber", token, status, username, password_hash AS "passwordHash",
+            subscription_plan AS "subscriptionPlan", subscription_expires_at AS "subscriptionExpiresAt",
+            trial_used AS "trialUsed"
+     FROM bots WHERE username = $1`,
+    [username]
+  );
+  return res.rows[0] || null;
+}
+
+export async function dbGetBotAccount(uuid) {
+  const res = await query(
+    `SELECT uuid, phone_number AS "phoneNumber", token, status, username,
+            subscription_plan AS "subscriptionPlan", subscription_expires_at AS "subscriptionExpiresAt",
+            trial_used AS "trialUsed"
+     FROM bots WHERE uuid = $1`,
+    [uuid]
+  );
+  return res.rows[0] || null;
+}
+
+export async function dbGetExpiredSubscriptions() {
+  const res = await query(
+    `SELECT uuid, phone_number AS "phoneNumber", status, subscription_expires_at AS "subscriptionExpiresAt"
+     FROM bots
+     WHERE subscription_expires_at IS NOT NULL
+       AND subscription_expires_at < NOW()
+       AND status NOT IN ('logged_out', 'expired')`
+  );
+  return res.rows;
+}
+
+export async function dbExtendSubscription(uuid, plan, addMs) {
+  const res = await query(
+    `UPDATE bots
+     SET subscription_plan = $2,
+         subscription_expires_at = GREATEST(COALESCE(subscription_expires_at, NOW()), NOW()) + ($3 || ' milliseconds')::interval,
+         updated_at = NOW()
+     WHERE uuid = $1
+     RETURNING subscription_expires_at AS "subscriptionExpiresAt"`,
+    [uuid, plan, String(addMs)]
+  );
+  return res.rows[0] || null;
+}
+
+// ─── PAIEMENTS ─────────────────────────────────────────────────────────────
+
+export async function dbCreatePayment(uuid, plan, amount, mfToken) {
+  const res = await query(
+    `INSERT INTO payments (uuid, plan, amount, mf_token, status)
+     VALUES ($1, $2, $3, $4, 'pending')
+     RETURNING id`,
+    [uuid, plan, amount, mfToken]
+  );
+  return res.rows[0];
+}
+
+export async function dbGetPaymentByToken(mfToken) {
+  const res = await query(`SELECT * FROM payments WHERE mf_token = $1`, [mfToken]);
+  return res.rows[0] || null;
+}
+
+export async function dbConfirmPayment(mfToken) {
+  const res = await query(
+    `UPDATE payments
+     SET status = 'paid', confirmed_at = NOW()
+     WHERE mf_token = $1 AND status != 'paid'
+     RETURNING *`,
+    [mfToken]
+  );
+  return res.rows[0] || null;
 }
 
 // ─── BOT CONFIG ────────────────────────────────────────────────────────────

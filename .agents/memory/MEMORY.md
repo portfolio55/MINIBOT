@@ -2,3 +2,4 @@
 - [Gifted API integration](gifted-api-integration.md) — real domain is api.gifted.co.ke (not giftedtech.co.ke/.web.id); many endpoint param names/existence must be verified by probing, not trusted from docs page or old bot code.
 - [Per-bot groupManager cache split](per-bot-groupmanager-cache-split.md) — group protection toggles (welcome, antilink, etc.) can save to DB but never take effect if a command creates its own createGroupManager() instead of reusing botContext.groupManager.
 - [Per-bot session file paths](per-bot-session-file-paths.md) — any per-bot feature that reads/writes a file (audio, media, config) must resolve the path via bot.sessionPath, never a hardcoded project-root path.
+- [MoneyFusion API quirks](moneyfusion-api-quirks.md) — real endpoint hostnames/paths differ from official docs; probe with curl before trusting a URL pattern.

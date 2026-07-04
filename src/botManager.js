@@ -14,6 +14,7 @@ import { pathToFileURL, fileURLToPath } from "url";
 import pino from "pino";
 import { Boom } from "@hapi/boom";
 import { EventEmitter } from "events";
+import bcrypt from "bcrypt";
 import logger from "./utils/logger.js";
 import { getBotMode, getReactionEmoji } from "./utils/botMode.js";
 import { updateBotStatus, getBotByUUID } from "./sessionManager.js";
@@ -21,6 +22,9 @@ import { initProtections } from "../protections.js";
 import { initProtections as initProtections2 } from "../protections2.js";
 import { createGroupManager } from "../groupManager.js";
 import { usePostgresAuthState, deleteAuthState, hasAuthState } from "./usePostgresAuthState.js";
+import { dbGetBotAccount, dbSetBotAccount } from "./db.js";
+import { generateCredentials } from "./services/moneyfusion.js";
+import { SUBSCRIPTION_PLANS } from "./config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -920,12 +924,44 @@ class BotManager extends EventEmitter {
       try {
         const ownerJid = `${ownerBare}@s.whatsapp.net`;
         const commandsCount = Object.keys(await loadCommands()).length;
+
+        // [ABONNEMENT] Création automatique du compte web (essai gratuit 24h) au 1er pairing
+        let accountLines = [];
+        try {
+          const account = await dbGetBotAccount(uuid);
+          if (account && !account.username) {
+            const { username, password } = generateCredentials(ownerBare);
+            const passwordHash = await bcrypt.hash(password, 10);
+            const trialMs = SUBSCRIPTION_PLANS.trial.durationMs;
+            await dbSetBotAccount(uuid, {
+              username,
+              passwordHash,
+              subscriptionPlan: "trial",
+              subscriptionExpiresAt: new Date(Date.now() + trialMs).toISOString(),
+              trialUsed: true,
+            });
+            accountLines = [
+              "",
+              "*🔑 TON COMPTE SIGMA MDX*",
+              `Identifiant: ${username}`,
+              `Mot de passe: ${password}`,
+              "",
+              "🎁 Essai gratuit de 24h activé !",
+              "Gère ton abonnement sur le site (page de connexion) avant expiration pour ne pas être déconnecté.",
+            ];
+            logger.info(`🔑 Compte web créé pour bot ${uuid} (username: ${username})`);
+          }
+        } catch (e) {
+          logger.error(`Erreur création compte web pour ${uuid}: ${e.message}`);
+        }
+
         await sock.sendMessage(ownerJid, {
           text: [
             "*SIGMA MDX DEPLOY ACTIF* 🚀",
             "",
             `⚙️ Mode: ${isPrefixMode ? 'Prefix' : 'Sans prefix'}`,
             `📋 Commandes: ${commandsCount}`,
+            ...accountLines,
             "",
             `💡 Tapez ${isPrefixMode ? BOT_CONFIG.PREFIXE_COMMANDE : ''}menu pour commencer`,
             "",

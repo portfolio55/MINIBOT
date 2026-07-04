@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA MDX DEPLOY - Mon compte</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+        h1 { text-align: center; color: #333; margin-bottom: 8px; font-size: 26px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+        .info-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        .info-row:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .info-label { font-weight: 600; color: #555; }
+        .info-value { color: #333; font-family: 'Courier New', monospace; }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-badge.active { background: #d4edda; color: #155724; }
+        .status-badge.expiring { background: #fff3cd; color: #856404; }
+        .status-badge.expired { background: #f8d7da; color: #721c24; }
+        .plans {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .plan-card {
+            border: 2px solid #eee;
+            border-radius: 12px;
+            padding: 18px;
+            text-align: center;
+        }
+        .plan-card h3 { font-size: 15px; color: #333; margin-bottom: 6px; }
+        .plan-card .price { font-size: 20px; font-weight: 700; color: #667eea; margin-bottom: 12px; }
+        .plan-card button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .plan-card button:hover:not(:disabled) { background: #5563c1; }
+        .plan-card button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 14px;
+        }
+        .alert.show { display: block; }
+        .alert.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .link-bar { text-align: center; margin-top: 20px; }
+        .link-bar a { color: #667eea; font-size: 13px; text-decoration: none; margin: 0 10px; }
+        .link-bar a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>👤 Mon compte SIGMA MDX</h1>
+        <p class="subtitle">Gère ton abonnement</p>
+
+        <div class="alert" id="alert"></div>
+
+        <div class="info-card">
+            <div class="info-row">
+                <span class="info-label">🆔 Identifiant :</span>
+                <span class="info-value" id="username">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">📱 Numéro :</span>
+                <span class="info-value" id="phoneNumber">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">📊 Statut du bot :</span>
+                <span class="status-badge" id="botStatus">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">📦 Plan actuel :</span>
+                <span class="info-value" id="planName">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">⏳ Expire le :</span>
+                <span class="info-value" id="expiresAt">-</span>
+            </div>
+        </div>
+
+        <h2 style="margin-bottom: 15px; font-size: 17px; color: #333;">💳 Renouveler mon abonnement</h2>
+        <div class="plans" id="plansContainer"></div>
+
+        <div class="link-bar">
+            <a href="#" id="dashboardLink">⚙️ Gérer mon bot</a>
+            <a href="#" id="logoutLink">🚪 Déconnexion</a>
+        </div>
+    </div>
+
+    <script>
+        const alertDiv = document.getElementById('alert');
+        let currentAccount = null;
+
+        const PLAN_LABELS = {
+            trial: 'Essai gratuit',
+            '2days': '2 jours',
+            week: '1 semaine',
+            month: '1 mois'
+        };
+
+        const PLAN_PRICES = {
+            '2days': 500,
+            week: 1000,
+            month: 3000
+        };
+
+        function showAlert(message, type) {
+            alertDiv.textContent = message;
+            alertDiv.className = `alert ${type} show`;
+        }
+
+        function renderPlans() {
+            const container = document.getElementById('plansContainer');
+            container.innerHTML = '';
+            for (const [key, price] of Object.entries(PLAN_PRICES)) {
+                const card = document.createElement('div');
+                card.className = 'plan-card';
+                card.innerHTML = `
+                    <h3>${PLAN_LABELS[key]}</h3>
+                    <div class="price">${price} FCFA</div>
+                    <button data-plan="${key}">Payer</button>
+                `;
+                container.appendChild(card);
+            }
+            container.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => payPlan(btn.dataset.plan, btn));
+            });
+        }
+
+        async function payPlan(plan, btn) {
+            btn.disabled = true;
+            btn.textContent = 'Redirection...';
+            try {
+                const response = await fetch('/api/payment/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erreur de paiement');
+                window.location.href = data.url;
+            } catch (error) {
+                showAlert(`Erreur : ${error.message}`, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Payer';
+            }
+        }
+
+        async function loadAccount() {
+            try {
+                const response = await fetch('/api/account/me');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+
+                currentAccount = data.account;
+                document.getElementById('username').textContent = currentAccount.username || '-';
+                document.getElementById('phoneNumber').textContent = currentAccount.phoneNumber || '-';
+                document.getElementById('planName').textContent = PLAN_LABELS[currentAccount.subscriptionPlan] || currentAccount.subscriptionPlan || '-';
+
+                const statusBadge = document.getElementById('botStatus');
+                statusBadge.textContent = currentAccount.status;
+                statusBadge.className = `status-badge ${currentAccount.status === 'connected' ? 'active' : currentAccount.status === 'expired' ? 'expired' : 'expiring'}`;
+
+                const expiresEl = document.getElementById('expiresAt');
+                if (currentAccount.subscriptionExpiresAt) {
+                    const expires = new Date(currentAccount.subscriptionExpiresAt);
+                    expiresEl.textContent = expires.toLocaleString('fr-FR');
+                    if (expires < new Date()) {
+                        expiresEl.style.color = '#dc3545';
+                    }
+                } else {
+                    expiresEl.textContent = '-';
+                }
+
+                document.getElementById('dashboardLink').href = `/dashboard/${currentAccount.token}`;
+
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('payment') === 'processed') {
+                    showAlert('Paiement en cours de traitement. Ton abonnement sera mis à jour sous quelques instants.', 'success');
+                }
+            } catch (error) {
+                showAlert(`Erreur : ${error.message}`, 'error');
+            }
+        }
+
+        document.getElementById('logoutLink').addEventListener('click', async (e) => {
+            e.preventDefault();
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        renderPlans();
+        loadAccount();
+        setInterval(loadAccount, 15000);
+    </script>
+</body>
+</html>

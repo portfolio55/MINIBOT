@@ -13,7 +13,12 @@ import { fileURLToPath } from "url";
 import fs from "fs-extra";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
 import botManager from "./botManager.js";
+import authRouter from "./routes/auth.js";
+import paymentRouter from "./routes/payment.js";
+import { dbGetExpiredSubscriptions, dbExtendSubscription } from "./db.js";
+import config, { SUBSCRIPTION_PLANS } from "./config.js";
 import {
   generateUUID,
   createBot,
@@ -108,11 +113,40 @@ applySecurityMiddleware(app, {
 // Middleware de base
 app.use(express.json({ limit: "1mb" })); // Limiter la taille du body
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
+app.use(cookieParser());
 app.use(accessLogger);
 app.use(express.static(path.join(__dirname, "..", "public"), {
   maxAge: "1h", // Cache statique 1h
   etag: true,
 }));
+
+// ─── Comptes utilisateurs / abonnements ──────────────────────────────────
+app.use(authRouter);
+app.use(paymentRouter);
+
+// [ABONNEMENTS] Déconnexion automatique des bots dont l'abonnement a expiré
+const subscriptionCheckInterval = setInterval(async () => {
+  try {
+    const expired = await dbGetExpiredSubscriptions();
+    for (const bot of expired) {
+      if (bot.status === "connected" || bot.status === "connecting") {
+        logger.info(`[Abonnement] Bot ${bot.uuid} expiré — arrêt automatique`);
+        try {
+          await botManager.stopBot(bot.uuid);
+        } catch (e) {
+          logger.warn(`[Abonnement] Erreur arrêt bot ${bot.uuid}: ${e.message}`);
+        }
+      }
+      await updateBotStatus(bot.uuid, "expired");
+    }
+    if (expired.length > 0) {
+      logger.info(`[Abonnement] ${expired.length} bot(s) désactivé(s) pour abonnement expiré`);
+    }
+  } catch (err) {
+    logger.error(`[Abonnement] Erreur vérification expirations: ${err.message}`);
+  }
+}, config.subscription.checkIntervalMs);
+subscriptionCheckInterval.unref();
 
 // Écouter les événements du BotManager
 botManager.on("pairing-code", ({ uuid, pairingCode }) => {
@@ -482,6 +516,29 @@ app.post("/api/admin/bot/:uuid/:action", adminLimiter, checkLockout, extractAdmi
     }
 
     res.json({ success: true, message: `Action ${action} exécutée` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// API Admin - Prolonger manuellement l'abonnement d'un bot
+app.post("/api/admin/bot/:uuid/extend-subscription", adminLimiter, checkLockout, extractAdminCredentials, verifyAdmin, async (req, res) => {
+  try {
+    const { uuid } = req.params;
+    const { plan } = req.body;
+    const planDef = SUBSCRIPTION_PLANS[plan];
+    if (!planDef) {
+      return res.status(400).json({ error: "Plan invalide" });
+    }
+
+    const bot = await getBotByUUID(uuid);
+    if (!bot) {
+      return res.status(404).json({ error: "Bot introuvable" });
+    }
+
+    const result = await dbExtendSubscription(uuid, plan, planDef.durationMs);
+    logger.info(`[Admin] Abonnement ${plan} accordé manuellement au bot ${uuid}`);
+    res.json({ success: true, subscriptionExpiresAt: result?.subscriptionExpiresAt });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
