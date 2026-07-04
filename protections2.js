@@ -3,14 +3,16 @@ import fs from "fs";
 import path from "path";
 
 // =================== FONCTIONS UTILITAIRES ===================
-const getOwnerLid = () => {
+const getOwnerLid = (sessionPath) => {
   try {
-    if (!fs.existsSync("./jid.json")) {
-      console.log(chalk.yellow("⚠️ jid.json non trouvé"));
+    const jidPath = sessionPath ? path.join(sessionPath, "jid.json") : "./jid.json";
+
+    if (!fs.existsSync(jidPath)) {
+      console.log(chalk.yellow(`⚠️ jid.json non trouvé (${jidPath})`));
       return null;
     }
     
-    const rawData = fs.readFileSync("./jid.json", "utf-8");
+    const rawData = fs.readFileSync(jidPath, "utf-8");
     const jidData = JSON.parse(rawData);
     const ownerLid = jidData?.ownerLid;
     
@@ -36,31 +38,38 @@ const getMessageText = (msg) => {
 };
 
 // Fonction pour vérifier si le message mentionne l'owner
-const isMentioningOwner = (msg) => {
+const isMentioningOwner = (msg, sessionPath, ownerNumber) => {
   try {
-    const ownerLid = getOwnerLid();
-    if (!ownerLid) {
-      console.log(chalk.yellow("⚠️ [AUDIORESPONS] Aucun ownerLid trouvé dans jid.json"));
+    const ownerLid = getOwnerLid(sessionPath);
+    if (!ownerLid && !ownerNumber) {
+      console.log(chalk.yellow("⚠️ [AUDIORESPONS] Aucun ownerLid/ownerNumber trouvé"));
       return false;
     }
-    
+
     const text = getMessageText(msg);
-    
+
     // Vérifier mention textuelle simple (@numéro)
-    if (text && text.includes(`@${ownerLid}`)) {
-      console.log(chalk.blue(`🔔 [AUDIORESPONS] Mention textuelle détectée: @${ownerLid}`));
+    if (text && ((ownerLid && text.includes(`@${ownerLid}`)) || (ownerNumber && text.includes(`@${ownerNumber}`)))) {
+      console.log(chalk.blue(`🔔 [AUDIORESPONS] Mention textuelle détectée`));
       return true;
     }
-    
-    // Vérifier les mentions WhatsApp (JID)
+
+    // Vérifier les mentions WhatsApp (JID) — les comptes modernes utilisent le format @lid,
+    // les anciens/legacy utilisent @s.whatsapp.net avec le numéro de téléphone
     const mentionedJids = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
-    const ownerJid = `${ownerLid}@s.whatsapp.net`;
-    
-    if (mentionedJids.includes(ownerJid)) {
-      console.log(chalk.blue(`🔔 [AUDIORESPONS] Mention JID détectée: ${ownerJid}`));
+    const candidateJids = [
+      ownerLid ? `${ownerLid}@lid` : null,
+      ownerLid ? `${ownerLid}@s.whatsapp.net` : null,
+      ownerNumber ? `${ownerNumber}@s.whatsapp.net` : null,
+      ownerNumber ? `${ownerNumber}@lid` : null,
+    ].filter(Boolean);
+
+    const matched = candidateJids.find(jid => mentionedJids.includes(jid));
+    if (matched) {
+      console.log(chalk.blue(`🔔 [AUDIORESPONS] Mention JID détectée: ${matched}`));
       return true;
     }
-    
+
     return false;
     
   } catch (error) {
@@ -175,7 +184,7 @@ export function initProtections(sock, ownerNumber, sessionPath) {
       if (!isGroup && !isPrivate) return; // Ignorer les statuts, etc.
       
       // Vérifier si ce message mentionne l'owner
-      if (isMentioningOwner(msg)) {
+      if (isMentioningOwner(msg, sessionPath, ownerNumber)) {
         console.log(chalk.cyan(`🎯 [AUDIORESPONS] Mention détectée dans ${isGroup ? 'groupe' : 'privé'}: ${from}`));
         
         // Envoyer l'audio en réponse
