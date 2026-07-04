@@ -30,6 +30,7 @@ import { checkLockout, extractAdminCredentials, verifyAdmin, validateTokenFormat
 import { validatePhoneNumber as validatePhone, isValidUUID } from "./utils/inputSanitizer.js";
 import healthRouter from "./routes/health.js";
 import { startMemoryGuard } from "./utils/memoryGuard.js";
+import { checkDbHealth } from "./db.js";
 
 dotenv.config();
 
@@ -153,6 +154,22 @@ app.use(healthRouter);
 
 // Démarrer la surveillance mémoire
 startMemoryGuard();
+
+// [KEEPALIVE DB] Ping périodique pour empêcher Neon de se mettre en veille
+// (autosuspend par défaut après quelques minutes d'inactivité sur les plans serverless)
+const DB_KEEPALIVE_INTERVAL_MS = parseInt(process.env.DB_KEEPALIVE_INTERVAL_MS || "180000");
+const dbKeepaliveInterval = setInterval(async () => {
+  try {
+    const result = await checkDbHealth();
+    if (!result.ok) {
+      logger.warn(`[DB Keepalive] Échec du ping: ${result.error}`);
+    }
+  } catch (err) {
+    logger.warn(`[DB Keepalive] Erreur: ${err.message}`);
+  }
+}, DB_KEEPALIVE_INTERVAL_MS);
+dbKeepaliveInterval.unref();
+logger.info(`[DB Keepalive] Ping démarré toutes les ${DB_KEEPALIVE_INTERVAL_MS / 1000}s (anti scale-to-zero Neon)`);
 
 // Démarrer le processus d'appairage
 app.post("/api/pairing/start", pairingLimiter, async (req, res) => {
