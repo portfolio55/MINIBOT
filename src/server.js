@@ -116,8 +116,16 @@ app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 app.use(cookieParser());
 app.use(accessLogger);
 app.use(express.static(path.join(__dirname, "..", "public"), {
-  maxAge: "1h", // Cache statique 1h
   etag: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith(".html")) {
+      // Les pages HTML ne doivent jamais être mises en cache pour éviter
+      // de servir une version obsolète après une mise à jour du design.
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    } else {
+      res.setHeader("Cache-Control", "public, max-age=3600");
+    }
+  },
 }));
 
 // ─── Comptes utilisateurs / abonnements ──────────────────────────────────
