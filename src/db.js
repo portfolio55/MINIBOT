@@ -8,15 +8,18 @@ import logger from "./utils/logger.js";
 const { Pool } = pg;
 
 // [OPTIMISÉ 300 BOTS] Pool avec configuration haute capacité
+// NEON_DATABASE_URL a la priorité (base externe pour déploiement VPS) sur DATABASE_URL (Replit interne)
+const CONNECTION_STRING = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: CONNECTION_STRING,
   max: parseInt(process.env.DB_POOL_MAX || "50"),       // 50 connexions max (adapté pour 300 bots)
   min: parseInt(process.env.DB_POOL_MIN || "5"),        // 5 connexions minimum toujours prêtes
   idleTimeoutMillis: 60000,                             // Garder les connexions idle plus longtemps
   connectionTimeoutMillis: 10000,                       // Plus de temps pour obtenir une connexion sous charge
   statement_timeout: 30000,
   allowExitOnIdle: false,                               // Ne jamais fermer le pool
-  ssl: process.env.DATABASE_URL?.includes("localhost")
+  ssl: CONNECTION_STRING?.includes("localhost")
     ? false
     : { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" }
 });
