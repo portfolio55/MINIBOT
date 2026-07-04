@@ -3,455 +3,863 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGMA MDX DEPLOY - Appairage WhatsApp</title>
+    <title>SIGMA MDX DEPLOY — Hébergez votre bot WhatsApp en quelques secondes</title>
+    <meta name="description" content="Créez, connectez et gérez votre bot WhatsApp sans code. Essai gratuit 24h, puis à partir de 500 FCFA.">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --primary: #6C5CE7;
+            --primary-dark: #5849c2;
+            --accent: #00D9A6;
+            --ink: #10121a;
+            --ink-soft: #4a4d5c;
+            --muted: #8a8da0;
+            --border: #e8e8f0;
+            --bg-soft: #f7f7fb;
+            --whatsapp: #25D366;
+            --whatsapp-dark: #128C7E;
+            --radius: 16px;
+            --shadow-sm: 0 2px 8px rgba(16, 18, 26, 0.06);
+            --shadow-md: 0 12px 32px rgba(16, 18, 26, 0.10);
+            --shadow-lg: 0 24px 60px rgba(16, 18, 26, 0.16);
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif;
+            color: var(--ink);
+            background: #fff;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a { color: inherit; }
+        img { max-width: 100%; display: block; }
+
+        .wrap {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ===== Announcement bar ===== */
+        .announce {
+            background: linear-gradient(90deg, var(--whatsapp) 0%, var(--whatsapp-dark) 100%);
+            color: #fff;
+            text-align: center;
+            font-size: 13.5px;
+            font-weight: 600;
+            padding: 10px 16px;
+        }
+        .announce a {
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        /* ===== Nav ===== */
+        header.nav {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: saturate(180%) blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner {
             display: flex;
-            justify-content: center;
             align-items: center;
-            padding: 20px;
+            justify-content: space-between;
+            padding: 16px 24px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 17px;
+            text-decoration: none;
+            letter-spacing: -0.01em;
+        }
+        .brand-mark {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary) 0%, #a29bfe 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+        }
+        nav.links {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            font-size: 14.5px;
+            font-weight: 600;
+            color: var(--ink-soft);
+        }
+        nav.links a { text-decoration: none; transition: color .15s; }
+        nav.links a:hover { color: var(--primary); }
+        .nav-cta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 14.5px;
+            padding: 11px 20px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: transform .15s, box-shadow .15s, background .15s;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 6px 16px rgba(108, 92, 231, 0.35);
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 22px rgba(108, 92, 231, 0.4);
+        }
+        .btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+        .btn-ghost {
+            background: transparent;
+            color: var(--ink);
+            border: 1.5px solid var(--border);
+        }
+        .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-whatsapp {
+            background: var(--whatsapp);
+            color: #fff;
+        }
+        .btn-whatsapp:hover { background: var(--whatsapp-dark); }
+        .btn-block { width: 100%; }
+        .btn-lg { padding: 15px 26px; font-size: 15.5px; border-radius: 12px; }
+
+        .mobile-hide { display: inline-flex; }
+        @media (max-width: 860px) {
+            nav.links { display: none; }
         }
 
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 40px;
-            max-width: 500px;
-            width: 100%;
+        /* ===== Hero ===== */
+        .hero {
+            padding: 76px 0 60px;
+            background:
+                radial-gradient(720px 380px at 85% -10%, rgba(108,92,231,0.14), transparent 60%),
+                radial-gradient(600px 340px at 10% 0%, rgba(0,217,166,0.10), transparent 60%);
         }
-
-        @media (max-width: 600px) {
-            .container {
-                padding: 20px;
-                margin: 10px;
-                border-radius: 15px;
-            }
-            
-            h1 {
-                font-size: 24px;
-            }
-            
-            .subtitle {
-                font-size: 12px;
-            }
-            
-            .form-group input {
-                font-size: 16px;
-                padding: 15px;
-            }
-            
-            .btn {
-                padding: 15px;
-                font-size: 16px;
-            }
+        .hero-inner {
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 56px;
+            align-items: center;
         }
-
-        @media (max-width: 400px) {
-            .container {
-                padding: 15px;
-                margin: 5px;
-            }
-            
-            h1 {
-                font-size: 20px;
-            }
-            
-            .btn {
-                padding: 12px;
-                font-size: 14px;
-            }
+        @media (max-width: 940px) {
+            .hero-inner { grid-template-columns: 1fr; }
         }
-
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f1effe;
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 13px;
+            padding: 7px 14px;
+            border-radius: 999px;
+            margin-bottom: 22px;
         }
-
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
+        .eyebrow .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--accent);
         }
-
-        .form-group {
+        h1.hero-title {
+            font-size: 46px;
+            line-height: 1.12;
+            letter-spacing: -0.02em;
+            font-weight: 800;
             margin-bottom: 20px;
         }
+        h1.hero-title .grad {
+            background: linear-gradient(100deg, var(--primary) 20%, #00b894 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .hero-sub {
+            font-size: 17.5px;
+            color: var(--ink-soft);
+            max-width: 520px;
+            margin-bottom: 30px;
+        }
+        .hero-actions {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 28px;
+        }
+        .hero-trust {
+            display: flex;
+            gap: 22px;
+            flex-wrap: wrap;
+            font-size: 13.5px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .hero-trust span { display: inline-flex; align-items: center; gap: 6px; }
 
+        @media (max-width: 600px) {
+            h1.hero-title { font-size: 32px; }
+            .hero { padding: 48px 0 40px; }
+        }
+
+        /* ===== Pairing card (hero right side) ===== */
+        .pair-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            padding: 28px;
+        }
+        .pair-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+        .pair-card-head h3 {
+            font-size: 16px;
+            font-weight: 800;
+        }
+        .badge-live {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #00b894;
+            background: #e6fbf5;
+            padding: 5px 10px;
+            border-radius: 999px;
+        }
+        .badge-live .pulse {
+            width: 7px; height: 7px; border-radius: 50%; background: #00b894;
+            animation: pulse 1.6s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .5; transform: scale(1.3); }
+        }
+
+        .form-group { margin-bottom: 16px; }
         label {
             display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 600;
+            margin-bottom: 7px;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--ink);
         }
-
         input {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
+            padding: 13px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 15.5px;
+            font-family: inherit;
+            transition: border-color .15s, box-shadow .15s;
+            background: var(--bg-soft);
         }
-
         input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(108,92,231,0.12);
+            background: #fff;
         }
-
-        .help-text {
-            font-size: 12px;
-            color: #999;
-            margin-top: 5px;
-        }
-
-        button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .pairing-code-container {
-            margin-top: 30px;
-            padding: 30px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border-radius: 12px;
-            text-align: center;
-            display: none;
-        }
-
-        .pairing-code-container.active {
-            display: block;
-        }
-
-        .pairing-code-label {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .pairing-code {
-            font-size: 48px;
-            font-weight: bold;
-            color: #333;
-            letter-spacing: 8px;
-            margin: 20px 0;
-            font-family: 'Courier New', monospace;
-        }
-
-        .instructions {
-            margin-top: 20px;
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #555;
-            line-height: 1.6;
-        }
-
-        .instructions ol {
-            margin-left: 20px;
-            margin-top: 10px;
-        }
-
-        .instructions li {
-            margin-bottom: 8px;
-        }
-
-        .status {
-            margin-top: 20px;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 600;
-            display: none;
-        }
-
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            display: block;
-        }
-
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            display: block;
-        }
-
-        .status.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            display: block;
-        }
+        .help-text { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
         .loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            width: 16px; height: 16px;
+            border: 2.5px solid rgba(255,255,255,0.35);
             border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 10px;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .status {
+            margin-top: 16px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: 600;
+            display: none;
         }
+        .status.success { background: #e6fbf5; color: #067a5c; display: block; }
+        .status.error { background: #fdeceb; color: #b3261e; display: block; }
+        .status.info { background: #eef4fd; color: #1a5fb4; display: block; }
 
-        .channel-banner {
-            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 24px;
+        .pairing-code-container {
+            margin-top: 20px;
+            padding: 22px;
+            background: linear-gradient(135deg, #f4f2ff 0%, #eafaf5 100%);
+            border-radius: 14px;
             text-align: center;
-            border: 3px solid #fff;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            display: none;
         }
-        .channel-banner h2 {
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-        .channel-banner p {
-            font-size: 14px;
-            opacity: 0.95;
+        .pairing-code-container.active { display: block; }
+        .pairing-code-label {
+            font-size: 12px;
+            color: var(--ink-soft);
             margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
         }
-        .btn-channel {
-            display: inline-block;
-            padding: 14px 28px;
+        .pairing-code {
+            font-size: 38px;
+            font-weight: 800;
+            color: var(--ink);
+            letter-spacing: 6px;
+            margin: 8px 0 16px;
+            font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+        }
+        .instructions {
+            margin-top: 6px;
+            padding: 14px;
             background: #fff;
-            color: #128C7E;
-            font-weight: 700;
-            text-decoration: none;
-            border-radius: 8px;
-            animation: blink 1.2s ease-in-out infinite;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border-radius: 10px;
+            font-size: 13px;
+            color: var(--ink-soft);
+            text-align: left;
         }
-        .btn-channel:hover {
-            background: #dcf8c6;
-            color: #075E54;
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.85; transform: scale(1.02); }
-        }
-        .btn-channel-floating {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 9999;
-            padding: 14px 24px;
-            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-            color: white;
-            font-weight: 700;
-            text-decoration: none;
-            border-radius: 50px;
-            box-shadow: 0 6px 25px rgba(37, 211, 102, 0.5);
-            animation: blink 1.2s ease-in-out infinite;
-        }
-        .btn-channel-floating:hover {
-            color: white;
-            transform: scale(1.05);
-        }
+        .instructions strong { color: var(--ink); }
+        .instructions ol { margin: 8px 0 0 18px; }
+        .instructions li { margin-bottom: 6px; }
 
         .token-display {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
+            margin-top: 16px;
+            padding: 14px;
+            background: var(--bg-soft);
+            border-radius: 10px;
             font-size: 12px;
             word-break: break-all;
             display: none;
         }
+        .token-display.active { display: block; }
+        .token-label { font-weight: 700; margin-bottom: 6px; color: var(--ink); }
 
-        .token-display.active {
-            display: block;
+        /* ===== Section shared ===== */
+        section { padding: 76px 0; }
+        .section-head {
+            text-align: center;
+            max-width: 620px;
+            margin: 0 auto 48px;
         }
-
-        .token-label {
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #333;
+        .section-eyebrow {
+            font-size: 12.5px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--primary);
+            margin-bottom: 10px;
         }
-
-        .plans-info {
-            margin-bottom: 24px;
-            padding: 18px;
-            background: #f8f9fb;
-            border: 1px solid #e6e8ee;
-            border-radius: 12px;
-        }
-        .plans-info-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 4px;
-        }
-        .plans-info-sub {
-            font-size: 12px;
-            color: #666;
+        .section-head h2 {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.01em;
             margin-bottom: 12px;
         }
-        .plans-grid {
+        .section-head p { color: var(--ink-soft); font-size: 16px; }
+
+        /* ===== Trust bar (join channel) ===== */
+        .trustbar {
+            background: var(--ink);
+            color: #fff;
+        }
+        .trustbar-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 22px 24px;
+        }
+        .trustbar-text { font-size: 14.5px; font-weight: 600; color: #d8d9e6; }
+        .trustbar-text strong { color: #fff; }
+
+        /* ===== Features ===== */
+        .features-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
+            gap: 22px;
+        }
+        @media (max-width: 860px) {
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .features-grid { grid-template-columns: 1fr; }
+        }
+        .feature-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 26px;
+            transition: box-shadow .2s, transform .2s;
+        }
+        .feature-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .feature-icon {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            margin-bottom: 16px;
+            background: #f1effe;
+        }
+        .feature-card h3 { font-size: 16.5px; font-weight: 700; margin-bottom: 8px; }
+        .feature-card p { font-size: 14px; color: var(--ink-soft); }
+
+        /* ===== How it works ===== */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+            counter-reset: step;
+        }
+        @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
+        .step {
+            position: relative;
+            padding-top: 8px;
+        }
+        .step-num {
+            width: 40px; height: 40px;
+            border-radius: 12px;
+            background: var(--primary);
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800;
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+        .step h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+        .step p { font-size: 14px; color: var(--ink-soft); }
+
+        /* ===== Pricing ===== */
+        .pricing-bg { background: var(--bg-soft); }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            align-items: stretch;
+        }
+        @media (max-width: 940px) {
+            .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 560px) {
+            .pricing-grid { grid-template-columns: 1fr; }
+        }
+        .plan-card {
+            background: #fff;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 26px 22px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .plan-card.highlight {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+        }
+        .plan-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 5px 12px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .plan-name { font-size: 14px; font-weight: 700; color: var(--ink-soft); margin-bottom: 10px; }
+        .plan-price { font-size: 30px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 4px; }
+        .plan-price span { font-size: 13px; font-weight: 600; color: var(--muted); }
+        .plan-duration { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+        .plan-feature-list { list-style: none; font-size: 13.5px; color: var(--ink-soft); margin-bottom: 22px; flex: 1; }
+        .plan-feature-list li { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-start; }
+        .plan-feature-list li::before { content: "✓"; color: var(--accent); font-weight: 800; }
+        .plan-card.trial-card {
+            background: linear-gradient(160deg, #f4f2ff 0%, #eafaf5 100%);
+            border-color: #d9d3ff;
+        }
+
+        /* ===== FAQ ===== */
+        .faq { max-width: 760px; margin: 0 auto; }
+        .faq-item {
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+        }
+        .faq-item h3 { font-size: 15.5px; font-weight: 700; margin-bottom: 8px; }
+        .faq-item p { font-size: 14px; color: var(--ink-soft); }
+
+        /* ===== Final CTA ===== */
+        .final-cta {
+            background: linear-gradient(120deg, var(--primary) 0%, #4834b8 100%);
+            border-radius: 24px;
+            padding: 56px 40px;
+            text-align: center;
+            color: #fff;
+            margin: 0 24px;
+        }
+        .final-cta h2 { font-size: 30px; font-weight: 800; margin-bottom: 14px; }
+        .final-cta p { font-size: 16px; opacity: 0.9; margin-bottom: 28px; }
+        .final-cta .btn-primary { background: #fff; color: var(--primary); box-shadow: none; }
+        .final-cta .btn-primary:hover { background: #f1effe; }
+
+        /* ===== Footer ===== */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 44px 0 28px;
+        }
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .footer-links { display: flex; gap: 24px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
+        .footer-links a { text-decoration: none; }
+        .footer-links a:hover { color: var(--primary); }
+        .footer-copy { font-size: 13px; color: var(--muted); margin-top: 20px; }
+
+        .btn-channel-floating {
+            position: fixed;
+            bottom: 22px;
+            right: 22px;
+            z-index: 999;
+            padding: 13px 20px;
+            background: linear-gradient(135deg, var(--whatsapp) 0%, var(--whatsapp-dark) 100%);
+            color: white;
+            font-weight: 700;
+            font-size: 13.5px;
+            text-decoration: none;
+            border-radius: 50px;
+            box-shadow: 0 8px 24px rgba(37, 211, 102, 0.45);
+            display: inline-flex;
+            align-items: center;
             gap: 8px;
         }
-        .plan-chip {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 10px 8px;
-            text-align: center;
-        }
-        .plan-chip.trial {
-            grid-column: 1 / -1;
-            background: linear-gradient(135deg, #eef1ff 0%, #f3ecfb 100%);
-            border-color: #c9d0f7;
-        }
-        .plan-chip-label {
-            font-size: 12px;
-            font-weight: 700;
-            color: #333;
-        }
-        .plan-chip-price {
-            font-size: 15px;
-            font-weight: 800;
-            color: #667eea;
-            margin-top: 2px;
-        }
-        .plans-info-note {
-            font-size: 11px;
-            color: #888;
-            margin-top: 10px;
-            line-height: 1.5;
+        .btn-channel-floating:hover { transform: translateY(-2px); }
+        @media (max-width: 600px) {
+            .btn-channel-floating span.label { display: none; }
         }
     </style>
 </head>
 <body>
-    <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener" class="btn-channel-floating">📢 Rejoindre la chaîne</a>
 
-    <div class="container">
-        <div class="channel-banner">
-            <h2>📢 OBLIGATOIRE AVANT DE DEPLOYER</h2>
-            <p>Vous devez rejoindre la chaîne WhatsApp SIGMA MDX DEPLOY pour pouvoir utiliser le bot.</p>
-            <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener" class="btn-channel">Rejoindre la chaîne WhatsApp</a>
-        </div>
-
-        <h1>🚀 SIGMA MDX DEPLOY</h1>
-        <p class="subtitle">Connectez votre WhatsApp en quelques secondes</p>
-
-        <div class="plans-info">
-            <div class="plans-info-title">💳 Ce qui vous attend</div>
-            <div class="plans-info-sub">Votre bot fonctionne selon un abonnement. Voici les tarifs :</div>
-            <div class="plans-grid">
-                <div class="plan-chip trial">
-                    <div class="plan-chip-label">🎁 Essai gratuit (1er appairage)</div>
-                    <div class="plan-chip-price">24h offertes</div>
-                </div>
-                <div class="plan-chip">
-                    <div class="plan-chip-label">2 jours</div>
-                    <div class="plan-chip-price">500 FCFA</div>
-                </div>
-                <div class="plan-chip">
-                    <div class="plan-chip-label">1 semaine</div>
-                    <div class="plan-chip-price">1000 FCFA</div>
-                </div>
-                <div class="plan-chip">
-                    <div class="plan-chip-label">1 mois</div>
-                    <div class="plan-chip-price">3000 FCFA</div>
-                </div>
-            </div>
-            <p class="plans-info-note">
-                À la fin de votre essai ou de votre abonnement, le bot se déconnecte automatiquement.
-                Un identifiant et un mot de passe vous seront envoyés par WhatsApp après l'appairage
-                pour gérer votre compte et renouveler votre abonnement sur la page <a href="/login.html">Connexion</a>.
-            </p>
-        </div>
-
-        <form id="pairingForm">
-            <div class="form-group">
-                <label for="phoneNumber">Numéro WhatsApp</label>
-                <input 
-                    type="text" 
-                    id="phoneNumber" 
-                    name="phoneNumber" 
-                    placeholder="Ex: 237673941535" 
-                    required
-                    pattern="[0-9]{10,15}"
-                >
-                <p class="help-text">Format international (10-15 chiffres, sans + ni espaces)</p>
-            </div>
-
-            <button type="submit" id="submitBtn">
-                Générer le code d'appairage
-            </button>
-        </form>
-
-        <div class="status" id="status"></div>
-
-        <div class="pairing-code-container" id="pairingContainer">
-            <div class="pairing-code-label">Code d'appairage</div>
-            <div class="pairing-code" id="pairingCode">- - - - - - - -</div>
-            <div class="instructions">
-                <strong>Instructions :</strong>
-                <ol>
-                    <li>Ouvrez WhatsApp sur votre téléphone</li>
-                    <li>Allez dans <strong>Paramètres</strong> → <strong>Appareils liés</strong></li>
-                    <li>Appuyez sur <strong>Lier un appareil</strong></li>
-                    <li>Sélectionnez <strong>Lier avec un code</strong></li>
-                    <li>Entrez le code ci-dessus</li>
-                </ol>
-            </div>
-        </div>
-
-        <div class="token-display" id="tokenDisplay">
-            <div class="token-label">🔑 Votre token d'accès :</div>
-            <div id="tokenValue"></div>
-            <p style="margin-top: 10px; font-size: 11px; color: #666;">
-                Conservez ce token pour accéder à votre dashboard. Vous serez redirigé automatiquement après la connexion.
-            </p>
-        </div>
+    <div class="announce">
+        📢 Rejoignez la chaîne WhatsApp officielle — obligatoire avant de déployer votre bot.
+        <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener">Rejoindre maintenant →</a>
     </div>
+
+    <header class="nav">
+        <div class="wrap nav-inner">
+            <a href="/" class="brand">
+                <span class="brand-mark">🚀</span>
+                SIGMA MDX DEPLOY
+            </a>
+            <nav class="links">
+                <a href="#features">Fonctionnalités</a>
+                <a href="#how-it-works">Comment ça marche</a>
+                <a href="#pricing">Tarifs</a>
+                <a href="#faq">FAQ</a>
+            </nav>
+            <div class="nav-cta">
+                <a href="/login.html" class="btn btn-ghost mobile-hide">Connexion</a>
+                <a href="#pair" class="btn btn-primary">Créer mon bot</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="wrap hero-inner">
+                <div>
+                    <div class="eyebrow"><span class="dot"></span> Plateforme multi-utilisateurs · 100 bots simultanés</div>
+                    <h1 class="hero-title">Votre bot WhatsApp,<br><span class="grad">déployé en 30 secondes.</span></h1>
+                    <p class="hero-sub">
+                        Connectez votre numéro WhatsApp, obtenez un bot automatisé complet avec 140+ commandes
+                        et protections de groupe — sans écrire une seule ligne de code.
+                    </p>
+                    <div class="hero-actions">
+                        <a href="#pair" class="btn btn-primary btn-lg">Démarrer l'essai gratuit (24h)</a>
+                        <a href="#pricing" class="btn btn-ghost btn-lg">Voir les tarifs</a>
+                    </div>
+                    <div class="hero-trust">
+                        <span>⚡ Connexion instantanée</span>
+                        <span>🔒 Données chiffrées</span>
+                        <span>🕐 Support h24</span>
+                    </div>
+                </div>
+
+                <div class="pair-card" id="pair">
+                    <div class="pair-card-head">
+                        <h3>Connecter mon WhatsApp</h3>
+                        <span class="badge-live"><span class="pulse"></span> En ligne</span>
+                    </div>
+
+                    <form id="pairingForm">
+                        <div class="form-group">
+                            <label for="phoneNumber">Numéro WhatsApp</label>
+                            <input
+                                type="text"
+                                id="phoneNumber"
+                                name="phoneNumber"
+                                placeholder="Ex: 237673941535"
+                                required
+                                pattern="[0-9]{10,15}"
+                            >
+                            <p class="help-text">Format international (10-15 chiffres, sans + ni espaces)</p>
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="btn btn-primary btn-block btn-lg">
+                            Générer le code d'appairage
+                        </button>
+                    </form>
+
+                    <div class="status" id="status"></div>
+
+                    <div class="pairing-code-container" id="pairingContainer">
+                        <div class="pairing-code-label">Code d'appairage</div>
+                        <div class="pairing-code" id="pairingCode">- - - - - - - -</div>
+                        <div class="instructions">
+                            <strong>Instructions :</strong>
+                            <ol>
+                                <li>Ouvrez WhatsApp sur votre téléphone</li>
+                                <li>Allez dans <strong>Paramètres</strong> → <strong>Appareils liés</strong></li>
+                                <li>Appuyez sur <strong>Lier un appareil</strong></li>
+                                <li>Sélectionnez <strong>Lier avec un code</strong></li>
+                                <li>Entrez le code ci-dessus</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="token-display" id="tokenDisplay">
+                        <div class="token-label">🔑 Votre token d'accès :</div>
+                        <div id="tokenValue"></div>
+                        <p style="margin-top: 10px; font-size: 11px; color: var(--muted);">
+                            Conservez ce token pour accéder à votre dashboard. Vous serez redirigé automatiquement après la connexion.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="trustbar">
+            <div class="wrap trustbar-inner">
+                <p class="trustbar-text">📢 <strong>Obligatoire :</strong> rejoignez la chaîne WhatsApp officielle avant de déployer votre bot.</p>
+                <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener" class="btn btn-whatsapp">Rejoindre la chaîne</a>
+            </div>
+        </div>
+
+        <section id="features">
+            <div class="wrap">
+                <div class="section-head">
+                    <div class="section-eyebrow">Fonctionnalités</div>
+                    <h2>Tout ce qu'il faut pour gérer votre bot</h2>
+                    <p>Une plateforme complète, pensée pour être fiable 24h/24 et simple à utiliser.</p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">⚙️</div>
+                        <h3>140+ commandes</h3>
+                        <p>Un catalogue prêt à l'emploi : modération, utilitaires, médias, jeux et bien plus.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🛡️</div>
+                        <h3>15 protections de groupe</h3>
+                        <p>Anti-lien, anti-spam, anti-bot et plus, activables en un clic depuis votre dashboard.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔁</div>
+                        <h3>Reconnexion automatique</h3>
+                        <p>Surveillance de santé h24 et reprise automatique en cas de coupure réseau.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3>Dashboard en temps réel</h3>
+                        <p>Suivez le statut de votre bot et gérez sa configuration en direct.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔐</div>
+                        <h3>Compte sécurisé</h3>
+                        <p>Identifiants générés automatiquement et envoyés directement sur WhatsApp.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💳</div>
+                        <h3>Paiement mobile simple</h3>
+                        <p>Renouvelez votre abonnement en quelques clics via Mobile Money.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="how-it-works" class="pricing-bg">
+            <div class="wrap">
+                <div class="section-head">
+                    <div class="section-eyebrow">Comment ça marche</div>
+                    <h2>3 étapes pour être en ligne</h2>
+                    <p>Aucune installation, aucune configuration serveur requise de votre côté.</p>
+                </div>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <h3>Entrez votre numéro</h3>
+                        <p>Renseignez votre numéro WhatsApp au format international et générez votre code d'appairage.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <h3>Liez votre appareil</h3>
+                        <p>Entrez le code dans WhatsApp → Appareils liés. Votre bot se connecte instantanément.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <h3>Recevez vos identifiants</h3>
+                        <p>Un compte est créé automatiquement et vos identifiants sont envoyés sur WhatsApp pour gérer votre abonnement.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="pricing">
+            <div class="wrap">
+                <div class="section-head">
+                    <div class="section-eyebrow">Tarifs</div>
+                    <h2>Simple, transparent, sans engagement</h2>
+                    <p>Commencez gratuitement, puis choisissez la durée qui vous convient.</p>
+                </div>
+                <div class="pricing-grid">
+                    <div class="plan-card trial-card">
+                        <div class="plan-name">🎁 Essai gratuit</div>
+                        <div class="plan-price">0 FCFA</div>
+                        <div class="plan-duration">24 heures — 1er appairage uniquement</div>
+                        <ul class="plan-feature-list">
+                            <li>Toutes les fonctionnalités incluses</li>
+                            <li>Aucune carte requise</li>
+                            <li>Activation immédiate</li>
+                        </ul>
+                        <a href="#pair" class="btn btn-ghost btn-block">Commencer gratuitement</a>
+                    </div>
+                    <div class="plan-card">
+                        <div class="plan-name">2 jours</div>
+                        <div class="plan-price">500 <span>FCFA</span></div>
+                        <div class="plan-duration">Facturé une fois</div>
+                        <ul class="plan-feature-list">
+                            <li>Bot actif 48h</li>
+                            <li>140+ commandes</li>
+                            <li>Support h24</li>
+                        </ul>
+                        <a href="#pair" class="btn btn-ghost btn-block">Choisir ce plan</a>
+                    </div>
+                    <div class="plan-card highlight">
+                        <div class="plan-badge">Le plus populaire</div>
+                        <div class="plan-name">1 semaine</div>
+                        <div class="plan-price">1000 <span>FCFA</span></div>
+                        <div class="plan-duration">Facturé une fois</div>
+                        <ul class="plan-feature-list">
+                            <li>Bot actif 7 jours</li>
+                            <li>140+ commandes</li>
+                            <li>15 protections de groupe</li>
+                            <li>Support prioritaire</li>
+                        </ul>
+                        <a href="#pair" class="btn btn-primary btn-block">Choisir ce plan</a>
+                    </div>
+                    <div class="plan-card">
+                        <div class="plan-name">1 mois</div>
+                        <div class="plan-price">3000 <span>FCFA</span></div>
+                        <div class="plan-duration">Facturé une fois</div>
+                        <ul class="plan-feature-list">
+                            <li>Bot actif 30 jours</li>
+                            <li>Meilleur rapport durée/prix</li>
+                            <li>Support prioritaire</li>
+                        </ul>
+                        <a href="#pair" class="btn btn-ghost btn-block">Choisir ce plan</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="pricing-bg">
+            <div class="wrap">
+                <div class="section-head">
+                    <div class="section-eyebrow">FAQ</div>
+                    <h2>Questions fréquentes</h2>
+                </div>
+                <div class="faq">
+                    <div class="faq-item">
+                        <h3>Comment je récupère mes identifiants de connexion ?</h3>
+                        <p>Un identifiant et un mot de passe sont générés automatiquement lors de votre premier appairage et envoyés directement dans votre WhatsApp via un message de bienvenue.</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>Que se passe-t-il quand mon abonnement expire ?</h3>
+                        <p>Votre bot se déconnecte automatiquement. Vous pouvez renouveler à tout moment depuis votre <a href="/login.html">espace compte</a> pour le remettre en ligne.</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>L'essai gratuit est-il vraiment sans engagement ?</h3>
+                        <p>Oui. Les 24h d'essai sont offertes lors de votre tout premier appairage, sans carte bancaire ni paiement requis.</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>Comment payer un abonnement ?</h3>
+                        <p>Le paiement s'effectue via Mobile Money (MoneyFusion), directement depuis votre espace compte, en quelques secondes.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="final-cta">
+                <h2>Prêt à déployer votre bot ?</h2>
+                <p>Rejoignez les utilisateurs qui automatisent déjà leur WhatsApp avec SIGMA MDX DEPLOY.</p>
+                <a href="#pair" class="btn btn-primary btn-lg">Créer mon bot gratuitement</a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="wrap">
+            <div class="footer-inner">
+                <a href="/" class="brand"><span class="brand-mark">🚀</span> SIGMA MDX DEPLOY</a>
+                <div class="footer-links">
+                    <a href="/login.html">Connexion</a>
+                    <a href="#pricing">Tarifs</a>
+                    <a href="#faq">FAQ</a>
+                    <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener">Chaîne WhatsApp</a>
+                </div>
+            </div>
+            <p class="footer-copy">© 2026 SIGMA MDX DEPLOY. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener" class="btn-channel-floating">📢 <span class="label">Rejoindre la chaîne</span></a>
 
     <script>
         /**
          * SIGMA MDX DEPLOY - Frontend Pairing
-         * [AMÉLIORÉ] Chargement dynamique de Socket.io avec fallback,
+         * Chargement dynamique de Socket.io avec fallback,
          * formulaire qui fonctionne même sans WebSocket (fetch uniquement),
          * et mécanisme de retry automatique.
          */
@@ -531,7 +939,7 @@
 
             function initSocket() {
                 if (typeof io !== 'function') return;
-                
+
                 try {
                     socket = io({
                         transports: ['websocket', 'polling'],
@@ -589,9 +997,9 @@
             async function handleSubmit(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 var phoneNumber = document.getElementById('phoneNumber').value.trim();
-                
+
                 // Validation côté client
                 if (!phoneNumber || phoneNumber.length < 10 || !/^\d{10,15}$/.test(phoneNumber)) {
                     showStatus('Veuillez entrer un numéro valide (10-15 chiffres)', 'error');
@@ -683,7 +1091,7 @@
             function pollForPairingCode(uuid, token) {
                 var attempts = 0;
                 var maxAttempts = 15; // 15 x 2s = 30s max
-                
+
                 var interval = setInterval(async function() {
                     attempts++;
                     if (attempts > maxAttempts) {
