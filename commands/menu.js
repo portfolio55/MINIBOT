@@ -10,35 +10,55 @@ export const name = "menu";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Images pour chaque mode
-const GIRL_IMAGES = [
-  "https://files.catbox.moe/gif51b.jpg",
-  "https://files.catbox.moe/s0opn7.jpg",
-  "https://files.catbox.moe/lhpf7b.jpg",
-  "https://files.catbox.moe/degxst.jpg",
-  "https://files.catbox.moe/weqqt6.jpg",
-  "https://files.catbox.moe/5j2ukc.jpg",
-  "https://files.catbox.moe/2g94h4.jpg",
-  "https://files.catbox.moe/z7h6nj.jpg",
-  "https://files.catbox.moe/e945km.jpg",
-  "https://files.catbox.moe/tdh6zq.jpg"
+// Médias pour chaque mode (images, gifs et vidéos)
+const BOY_MEDIA = [
+  "https://files.catbox.moe/bld2md.jpeg",
+  "https://files.catbox.moe/lgfdw9.jpeg",
+  "https://files.catbox.moe/sbjiak.jpeg",
+  "https://files.catbox.moe/hajb8e.jpeg",
+  "https://files.catbox.moe/27pkgd.jpeg",
+  "https://files.catbox.moe/e7zz9w.jpeg",
+  "https://files.catbox.moe/tusxcv.jpeg",
+  "https://files.catbox.moe/j91nis.jpeg",
+  "https://files.catbox.moe/q1761g.jpeg",
+  "https://files.catbox.moe/2y9cv0.jpeg",
+  "https://files.catbox.moe/d8sbke.gif",
+  "https://files.catbox.moe/9rfw38.mov",
+  "https://files.catbox.moe/j00rij.mov"
 ];
 
-const BOY_IMAGES = [
-  "https://files.catbox.moe/6uizvk.jpg",
-  "https://files.catbox.moe/m34aop.jpg",
-  "https://files.catbox.moe/jwbrkr.jpg",
-  "https://files.catbox.moe/y7c9p5.jpg",
-  "https://files.catbox.moe/a33171.jpg",
-  "https://files.catbox.moe/2zl7vk.jpg",
-  "https://files.catbox.moe/dnq77s.jpg",
-  "https://files.catbox.moe/312znf.jpg",
-  "https://files.catbox.moe/5le1e7.jpg"
+const GIRL_MEDIA = [
+  "https://files.catbox.moe/fe4cax.jpeg",
+  "https://files.catbox.moe/bryi3h.jpeg",
+  "https://files.catbox.moe/iss7tf.jpeg",
+  "https://files.catbox.moe/y1ux96.mp4",
+  "https://files.catbox.moe/zfnd0i.mp4",
+  "https://files.catbox.moe/rwacqr.jpeg",
+  "https://files.catbox.moe/ooy38i.jpeg",
+  "https://files.catbox.moe/fpvbzu.jpeg",
+  "https://files.catbox.moe/1go46s.jpeg",
+  "https://files.catbox.moe/68ueou.jpeg",
+  "https://files.catbox.moe/9uultv.jpeg",
+  "https://files.catbox.moe/rrpz1x.jpeg",
+  "https://files.catbox.moe/ff3158.jpeg",
+  "https://files.catbox.moe/kpt5nb.jpeg",
+  "https://files.catbox.moe/pwjnjp.gif",
+  "https://files.catbox.moe/are1z9.jpeg",
+  "https://files.catbox.moe/e9oz7c.jpeg",
+  "https://files.catbox.moe/6mlzl6.jpeg"
 ];
 
-const getRandomImage = (mode) => {
-  const images = mode === "girl" ? GIRL_IMAGES : BOY_IMAGES;
-  return images[Math.floor(Math.random() * images.length)];
+const getMediaType = (url) => {
+  const ext = String(url).split(".").pop().toLowerCase();
+  if (ext === "mp4" || ext === "mov") return "video";
+  if (ext === "gif") return "gif";
+  return "image";
+};
+
+const getRandomMedia = (mode) => {
+  const list = mode === "girl" ? GIRL_MEDIA : BOY_MEDIA;
+  const url = list[Math.floor(Math.random() * list.length)];
+  return { url, type: getMediaType(url) };
 };
 
 const loadBranding = async (sessionPath) => {
@@ -307,29 +327,30 @@ export async function execute(sock, msg, args, from, botContext) {
     }
 
     const text = [header, "", ...sections].join("\n\n");
-    const menuImage = getRandomImage(currentMode);
+    const menuMedia = getRandomMedia(currentMode);
 
-    // 1. Envoi du menu avec l'image (image + texte du menu en légende)
+    let mediaPayload;
+    if (menuMedia.type === "video") {
+      mediaPayload = { video: { url: menuMedia.url }, caption: text };
+    } else if (menuMedia.type === "gif") {
+      mediaPayload = { video: { url: menuMedia.url }, caption: text, gifPlayback: true };
+    } else {
+      mediaPayload = { image: { url: menuMedia.url }, caption: text };
+    }
+
+    // 1. Envoi du menu avec le média (image/gif/vidéo + texte du menu en légende)
     let menuSent = false;
     try {
       await Promise.race([
-        sock.sendMessage(
-          from,
-          {
-            image: { url: menuImage },
-            caption: text,
-            gifPlayback: true
-          },
-          { quoted: msg }
-        ),
+        sock.sendMessage(from, mediaPayload, { quoted: msg }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("IMAGE_TIMEOUT")), 15000)
+          setTimeout(() => reject(new Error("MEDIA_TIMEOUT")), 20000)
         )
       ]);
       menuSent = true;
-    } catch (imgErr) {
-      // Si l'image échoue (timeout / réseau), envoyer le menu en texte uniquement
-      console.warn("⚠️ Menu: image non chargée, envoi du menu en texte:", imgErr.message);
+    } catch (mediaErr) {
+      // Si le média échoue (timeout / réseau), envoyer le menu en texte uniquement
+      console.warn("⚠️ Menu: média non chargé, envoi du menu en texte:", mediaErr.message);
       await sock.sendMessage(from, { text }, { quoted: msg });
       menuSent = true;
     }
