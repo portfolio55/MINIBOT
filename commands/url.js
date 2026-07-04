@@ -35,22 +35,36 @@ export async function execute(sock, m, args) {
     const filePath = join(tempDir, `media_${Date.now()}.${ext}`);
     fs.writeFileSync(filePath, buffer);
 
-    // Upload vers litterbox.catbox.moe (l'API catbox classique bloque les uploads anonymes
-    // depuis les hébergeurs comme Replit, litterbox reste accessible et donne des liens catbox)
-    const form = new FormData();
-    form.append("reqtype", "fileupload");
-    form.append("time", "72h");
-    form.append("fileToUpload", fs.createReadStream(filePath));
+    // catbox.moe bloque l'upload direct de fichiers (fileupload) depuis les hébergeurs comme
+    // Replit, mais accepte l'upload par URL (urlupload). On héberge donc le fichier
+    // temporairement sur litterbox (même famille catbox), puis on demande à catbox.moe de le
+    // récupérer via cette URL pour obtenir un lien permanent files.catbox.moe.
+    const tempForm = new FormData();
+    tempForm.append("reqtype", "fileupload");
+    tempForm.append("time", "1h");
+    tempForm.append("fileToUpload", fs.createReadStream(filePath));
 
-    const upload = await axios.post("https://litterbox.catbox.moe/resources/internals/api.php", form, {
-      headers: form.getHeaders(),
+    const tempUpload = await axios.post("https://litterbox.catbox.moe/resources/internals/api.php", tempForm, {
+      headers: tempForm.getHeaders(),
       timeout: 30000
     });
 
     fs.unlinkSync(filePath); // Nettoyage
 
-    const url = typeof upload.data === "string" ? upload.data.trim() : "";
-    if (!url || !url.startsWith("http")) throw new Error("Upload échoué, aucune URL retournée.");
+    const tempUrl = typeof tempUpload.data === "string" ? tempUpload.data.trim() : "";
+    if (!tempUrl || !tempUrl.startsWith("http")) throw new Error("Upload temporaire échoué, aucune URL retournée.");
+
+    const permForm = new FormData();
+    permForm.append("reqtype", "urlupload");
+    permForm.append("url", tempUrl);
+
+    const permUpload = await axios.post("https://catbox.moe/user/api.php", permForm, {
+      headers: permForm.getHeaders(),
+      timeout: 30000
+    });
+
+    const url = typeof permUpload.data === "string" ? permUpload.data.trim() : "";
+    if (!url || !url.startsWith("http")) throw new Error("Upload catbox échoué, aucune URL permanente retournée.");
     await sock.sendMessage(
       m.key.remoteJid,
       { text: `> SIGMA MDX DEPLOY: ? URL générée : ${url}` },
