@@ -620,7 +620,13 @@ class BotManager extends EventEmitter {
 
       // Charger l'état d'authentification
       const { state, saveCreds } = await usePostgresAuthState(uuid);
-      bot._isFirstPairing = !state.creds.registered;
+      // [FIX] Ne calculer _isFirstPairing qu'une seule fois par cycle de vie du bot en mémoire.
+      // Sans ça, une reconnexion 515 juste après la génération du pairing code (creds déjà
+      // enregistrées entre-temps) écrasait le flag à false et le message de bienvenue +
+      // création de compte web étaient silencieusement sautés.
+      if (bot._isFirstPairing === undefined) {
+        bot._isFirstPairing = !state.creds.registered;
+      }
       const { version } = await fetchLatestBaileysVersion();
 
       // Créer la socket Baileys
@@ -917,43 +923,51 @@ class BotManager extends EventEmitter {
       logger.error(`Erreur chargement protections2.js pour ${uuid}: ${e.message}`);
     }
 
-    // [NO SPAM] Message de bienvenue envoyé UNIQUEMENT lors du tout premier pairing (pas à chaque reconnexion)
-    if (bot._isFirstPairing && !bot._welcomeSent) {
+    // [ABONNEMENT] Création automatique du compte web (essai gratuit 24h).
+    // [SELF-HEAL] Basé sur l'état réel en DB (account.username absent), PAS sur un flag
+    // en mémoire — ainsi, même si le message de bienvenue a été raté lors d'une reconnexion
+    // précoce (ex: 515 juste après le pairing), le compte + les identifiants seront quand
+    // même créés et envoyés dès la prochaine connexion réussie.
+    let accountLines = [];
+    let newAccountCreated = false;
+    try {
+      const account = await dbGetBotAccount(uuid);
+      if (account && !account.username) {
+        const { username, password } = generateCredentials(ownerBare);
+        const passwordHash = await bcrypt.hash(password, 10);
+        const trialMs = SUBSCRIPTION_PLANS.trial.durationMs;
+        await dbSetBotAccount(uuid, {
+          username,
+          passwordHash,
+          subscriptionPlan: "trial",
+          subscriptionExpiresAt: new Date(Date.now() + trialMs).toISOString(),
+          trialUsed: true,
+        });
+        accountLines = [
+          "",
+          "*🔑 TON COMPTE SIGMA MDX*",
+          `Identifiant: ${username}`,
+          `Mot de passe: ${password}`,
+          "",
+          "🎁 Essai gratuit de 24h activé !",
+          "Gère ton abonnement sur le site (page de connexion) avant expiration pour ne pas être déconnecté.",
+        ];
+        newAccountCreated = true;
+        logger.info(`🔑 Compte web créé pour bot ${uuid} (username: ${username})`);
+      }
+    } catch (e) {
+      logger.error(`Erreur création compte web pour ${uuid}: ${e.message}`);
+    }
+
+    // [NO SPAM] Message de bienvenue complet envoyé UNIQUEMENT lors du tout premier pairing
+    // (pas à chaque reconnexion) — mais si un compte vient d'être créé (self-heal ci-dessus),
+    // on envoie quand même les identifiants même si le message "complet" a déjà été raté.
+    if ((bot._isFirstPairing && !bot._welcomeSent) || newAccountCreated) {
       bot._welcomeSent = true;
       bot._isFirstPairing = false;
       try {
         const ownerJid = `${ownerBare}@s.whatsapp.net`;
         const commandsCount = Object.keys(await loadCommands()).length;
-
-        // [ABONNEMENT] Création automatique du compte web (essai gratuit 24h) au 1er pairing
-        let accountLines = [];
-        try {
-          const account = await dbGetBotAccount(uuid);
-          if (account && !account.username) {
-            const { username, password } = generateCredentials(ownerBare);
-            const passwordHash = await bcrypt.hash(password, 10);
-            const trialMs = SUBSCRIPTION_PLANS.trial.durationMs;
-            await dbSetBotAccount(uuid, {
-              username,
-              passwordHash,
-              subscriptionPlan: "trial",
-              subscriptionExpiresAt: new Date(Date.now() + trialMs).toISOString(),
-              trialUsed: true,
-            });
-            accountLines = [
-              "",
-              "*🔑 TON COMPTE SIGMA MDX*",
-              `Identifiant: ${username}`,
-              `Mot de passe: ${password}`,
-              "",
-              "🎁 Essai gratuit de 24h activé !",
-              "Gère ton abonnement sur le site (page de connexion) avant expiration pour ne pas être déconnecté.",
-            ];
-            logger.info(`🔑 Compte web créé pour bot ${uuid} (username: ${username})`);
-          }
-        } catch (e) {
-          logger.error(`Erreur création compte web pour ${uuid}: ${e.message}`);
-        }
 
         await sock.sendMessage(ownerJid, {
           text: [
