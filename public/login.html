@@ -2,23 +2,30 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGMA MDX DEPLOY — Connexion</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SIGMA MDX DEPLOY — connexion</title>
     <style>
         :root {
-            --bg: #0a0a0d;
-            --panel: #16161c;
-            --border: #2a2a34;
-            --text: #f4f4f6;
-            --muted: #9a9aa8;
-            --gold: #f5b301;
-            --gold-soft: #ffd257;
-            --danger: #ff5c5c;
+            --bg: #0a0d0f;
+            --panel: #12171a;
+            --panel-2: #171d21;
+            --border: #232a2e;
+            --text: #d9dfe2;
+            --muted: #7a8790;
+            --accent: #39d353;
+            --accent-dim: #26a641;
+            --danger: #ff5f56;
+            --mono: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, 'Courier New', monospace;
+            --radius: 6px;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif;
+            font-family: var(--mono);
             background: var(--bg);
+            background-image:
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 28px 28px;
             color: var(--text);
             min-height: 100vh;
             display: flex;
@@ -26,99 +33,124 @@
             justify-content: center;
             padding: 20px;
         }
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
-            padding: 40px;
+        .term {
             width: 100%;
             max-width: 400px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            overflow: hidden;
         }
+        .term-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 14px;
+            background: var(--panel-2);
+            border-bottom: 1px solid var(--border);
+        }
+        .term-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .term-dot.r { background: var(--danger); }
+        .term-dot.y { background: #ffbd2e; }
+        .term-dot.g { background: var(--accent-dim); }
+        .term-title { margin-left: 8px; font-size: 12px; color: var(--muted); }
+        .term-body { padding: 28px; }
         .brand-mark {
-            width: 44px; height: 44px; margin: 0 auto 16px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--gold) 0%, #c98a00 100%);
+            width: 40px; height: 40px; margin: 0 auto 16px;
+            border-radius: 6px;
+            background: var(--panel-2);
+            border: 1px solid var(--accent);
             display: flex; align-items: center; justify-content: center;
-            font-size: 22px; font-weight: 900; color: #0a0a0d;
+            font-size: 19px; font-weight: 700; color: var(--accent);
         }
-        h1 { text-align: center; margin-bottom: 8px; font-size: 24px; font-weight: 800; }
-        .subtitle { text-align: center; color: var(--muted); margin-bottom: 30px; font-size: 14px; }
-        label { display: block; font-weight: 700; color: var(--text); margin-bottom: 6px; font-size: 13.5px; }
+        h1 { text-align: center; margin-bottom: 6px; font-size: 18px; font-weight: 700; }
+        .subtitle { text-align: center; color: var(--muted); margin-bottom: 26px; font-size: 12.5px; }
+        label { display: block; font-weight: 400; color: var(--muted); margin-bottom: 6px; font-size: 12.5px; }
+        label::before { content: "> "; color: var(--accent); }
         input {
             width: 100%;
-            padding: 12px 14px;
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            margin-bottom: 18px;
-            font-size: 15px;
-            background: #0d0d10;
+            padding: 11px 13px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            font-size: 14px;
+            background: var(--bg);
             color: var(--text);
-            font-family: inherit;
+            font-family: var(--mono);
         }
-        input::placeholder { color: #55555f; }
-        input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px rgba(245,179,1,0.12); }
+        input::placeholder { color: #4a5459; }
+        input:focus { outline: none; border-color: var(--accent); }
         button {
             width: 100%;
-            padding: 14px;
+            padding: 13px;
             border: none;
-            border-radius: 10px;
-            background: var(--gold);
-            color: #0a0a0d;
-            font-size: 15px;
+            border-radius: var(--radius);
+            background: var(--accent);
+            color: #04120a;
+            font-size: 14px;
             font-weight: 700;
+            font-family: var(--mono);
             cursor: pointer;
-            transition: background .15s, transform .15s;
+            transition: background .15s, transform .1s;
         }
-        button:hover:not(:disabled) { background: var(--gold-soft); transform: translateY(-1px); }
-        button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+        button:hover:not(:disabled) { background: #4ee566; transform: translateY(-1px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         .alert {
-            padding: 12px 14px;
-            border-radius: 10px;
-            margin-bottom: 18px;
+            padding: 11px 13px;
+            border: 1px solid var(--danger);
+            border-radius: var(--radius);
+            margin-bottom: 16px;
             display: none;
-            font-size: 13.5px;
-            font-weight: 600;
+            font-size: 12.5px;
+            color: var(--danger);
+            background: rgba(255,95,86,0.08);
         }
         .alert.show { display: block; }
-        .alert.error { background: rgba(255,92,92,0.12); color: var(--danger); }
         .hint {
             text-align: center;
-            margin-top: 20px;
-            font-size: 13px;
+            margin-top: 18px;
+            font-size: 12px;
             color: var(--muted);
         }
         .back-link {
             display: block;
             text-align: center;
-            margin-top: 16px;
-            font-size: 13px;
+            margin-top: 14px;
+            font-size: 12px;
             color: var(--muted);
             text-decoration: none;
         }
-        .back-link:hover { color: var(--gold); }
+        .back-link:hover { color: var(--accent); }
+        @media (max-width: 460px) { .term-body { padding: 22px 18px; } }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="brand-mark">Σ</div>
-        <h1>Connexion</h1>
-        <p class="subtitle">Accède à ton compte SIGMA MDX</p>
+    <div class="term">
+        <div class="term-bar">
+            <span class="term-dot r"></span>
+            <span class="term-dot y"></span>
+            <span class="term-dot g"></span>
+            <span class="term-title">login.sh</span>
+        </div>
+        <div class="term-body">
+            <div class="brand-mark">Σ</div>
+            <h1>connexion</h1>
+            <p class="subtitle">accède à ton compte sigma-mdx</p>
 
-        <div class="alert error" id="alert"></div>
+            <div class="alert" id="alert"></div>
 
-        <form id="loginForm">
-            <label for="username">Identifiant</label>
-            <input type="text" id="username" required autocomplete="username">
+            <form id="loginForm">
+                <label for="username">identifiant</label>
+                <input type="text" id="username" required autocomplete="username">
 
-            <label for="password">Mot de passe</label>
-            <input type="password" id="password" required autocomplete="current-password">
+                <label for="password">mot de passe</label>
+                <input type="password" id="password" required autocomplete="current-password">
 
-            <button type="submit" id="btnLogin">Se connecter</button>
-        </form>
+                <button type="submit" id="btnLogin">se connecter</button>
+            </form>
 
-        <p class="hint">Tes identifiants ont été envoyés sur WhatsApp lors du premier appairage de ton bot.</p>
-        <a href="/" class="back-link">← Retour à l'accueil</a>
+            <p class="hint">tes identifiants ont été envoyés sur WhatsApp lors du premier appairage.</p>
+            <a href="/" class="back-link">← retour à l'accueil</a>
+        </div>
     </div>
 
     <script>
@@ -135,7 +167,7 @@
             e.preventDefault();
             alertDiv.classList.remove('show');
             btn.disabled = true;
-            btn.textContent = 'Connexion...';
+            btn.textContent = 'connexion...';
 
             try {
                 const username = document.getElementById('username').value.trim();
@@ -150,7 +182,7 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Erreur de connexion');
+                    throw new Error(data.error || 'erreur de connexion');
                 }
 
                 window.location.href = '/account.html';
@@ -158,7 +190,7 @@
                 showError(error.message);
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Se connecter';
+                btn.textContent = 'se connecter';
             }
         });
     </script>
