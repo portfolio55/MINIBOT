@@ -5,7 +5,8 @@
 import {
   makeWASocket,
   fetchLatestBaileysVersion,
-  DisconnectReason
+  DisconnectReason,
+  Browsers
 } from "@whiskeysockets/baileys";
 import fs from "fs-extra";
 import path from "path";
@@ -674,7 +675,11 @@ class BotManager extends EventEmitter {
         printQRInTerminal: false,
         logger: pino({ level: "silent" }),
         auth: state,
-        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        // [FIX PAIRING "Connection Closed"] Le fingerprint navigateur inventé
+        // ("Chrome 20.0.04" n'existe pas) était probablement flaggé/rejeté par
+        // WhatsApp, causant des fermetures de connexion pendant la génération
+        // du code de pairing. On utilise le préréglage officiel Baileys.
+        browser: Browsers.ubuntu("Chrome"),
         msgRetryCounterCache: new Map(),
         keepAliveIntervalMs: BOT_CONFIG.KEEPALIVE_INTERVAL_MS,
         connectTimeoutMs: 60000,
@@ -738,7 +743,14 @@ class BotManager extends EventEmitter {
             break;
           } catch (err) {
             logger.error(`Erreur génération pairing code pour ${uuid} (tentative ${i + 1}/${maxPairingAttempts}): ${err.message}`);
-            if (i === maxPairingAttempts - 1) {
+            // [FIX] "Connection Closed" veut dire que le WebSocket est mort —
+            // réessayer sur la même socket ne peut jamais fonctionner et ne
+            // fait que perdre du temps avant l'échec final. On sort tout de
+            // suite pour laisser l'appelant (route /api/pairing/start) recréer
+            // une socket fraîche au lieu d'épuiser les 3 tentatives à vide.
+            const socketDead = /Connection Closed/i.test(err.message) ||
+              (sock.ws && sock.ws.readyState !== undefined && sock.ws.readyState !== 1);
+            if (socketDead || i === maxPairingAttempts - 1) {
               this.emit("pairing-error", { uuid, error: err.message });
               throw err;
             }
