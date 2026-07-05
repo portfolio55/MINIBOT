@@ -1,7 +1,11 @@
 User-agent: *
 Allow: /
 Disallow: /admin.html
+Disallow: /admin
 Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /account.html
 Disallow: /api/
 
 Sitemap: https://sigmamdx.site/sitemap.xml

@@ -364,6 +364,7 @@ app.get("/api/pairing/status/:uuid", async (req, res) => {
 
 // Dashboard utilisateur
 app.get("/dashboard/:token", (req, res) => {
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
   res.sendFile(path.join(__dirname, "..", "public", "dashboard.html"));
 });
 
@@ -475,6 +476,7 @@ app.get("/api/bot/:token/status", botApiLimiter, validateTokenFormat, async (req
 
 // Dashboard Admin
 app.get("/admin", (req, res) => {
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
   res.sendFile(path.join(__dirname, "..", "public", "admin.html"));
 });
 
