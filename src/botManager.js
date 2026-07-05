@@ -1145,7 +1145,9 @@ class BotManager extends EventEmitter {
 
     // [PLAY INTERACTIF] Si un choix audio/vidéo est en attente pour cet expéditeur,
     // intercepter la réponse "1"/"2" AVANT le routage normal des commandes (pas de préfixe requis).
-    if (!msg.key.fromMe && /^[12]$/.test(text.trim())) {
+    // Pas d'exclusion sur fromMe : de nombreux propriétaires testent leur bot en s'envoyant
+    // des messages à eux-mêmes, ces messages ont fromMe=true et doivent aussi être interceptés.
+    if (/^[12]$/.test(text.trim())) {
       try {
         const handled = await handlePendingPlayReply(uuid, from, sender, text);
         if (handled) return;
@@ -1210,6 +1212,10 @@ class BotManager extends EventEmitter {
     const botContext = {
       sessionPath: bot.sessionPath, owners, sudoList, uuid, isOwner, isSudo, groupManager: bot.groupManager,
       protectionManager: bot.protectionManager,
+      // [PLAY INTERACTIF] Identité de l'expéditeur telle que calculée par handleMessages
+      // (gère fromMe correctement) — à réutiliser par les commandes au lieu de recalculer
+      // sender à partir de msg.key, pour rester cohérent avec handlePendingPlayReply().
+      sender,
       getUserMessageIds: (groupJid, userJid) => this.getCachedMessagesForUser(uuid, groupJid, userJid),
       clearUserMessages: (groupJid, userJid) => this.clearCachedMessagesForUser(uuid, groupJid, userJid)
     };

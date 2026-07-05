@@ -126,7 +126,10 @@ export async function execute(sock, msg, args, from, botContext) {
   }
 
   const uuid = botContext?.uuid || "default";
-  const sender = msg.key.participant || from;
+  // [PLAY INTERACTIF] Utiliser la même identité que celle calculée dans handleMessages()
+  // (gère fromMe correctement) pour que la clé corresponde à celle utilisée par
+  // handlePendingPlayReply() lors de la réponse "1"/"2".
+  const sender = botContext?.sender || msg.key.participant || from;
 
   try {
     await sock.sendMessage(from, {
