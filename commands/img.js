@@ -4,28 +4,24 @@ export const name = "img";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
 
-async function getVqd(query) {
-  const res = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}&iar=images&iax=images&ia=images`, {
-    headers: { "User-Agent": UA }
-  });
-  const html = await res.text();
-  const match = html.match(/vqd=['"]([\d-]+)['"]/);
-  if (!match) throw new Error("Impossible d'obtenir le token de recherche.");
-  return match[1];
-}
-
 async function searchImages(query, count) {
-  const vqd = await getVqd(query);
-  const res = await fetch(
-    `https://duckduckgo.com/i.js?q=${encodeURIComponent(query)}&vqd=${vqd}&f=,,,&p=1`,
-    { headers: { "User-Agent": UA, "Referer": "https://duckduckgo.com/" } }
-  );
-  const data = await res.json();
-  const results = data?.results || [];
-  return results
-    .map(r => r.image)
-    .filter(u => typeof u === "string" && u.startsWith("http"))
-    .slice(0, count);
+  const url = `https://www.bing.com/images/async?q=${encodeURIComponent(query)}&first=1&count=${Math.min(count * 3, 50)}&async=content`;
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": UA,
+      "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8"
+    },
+    timeout: 15000
+  });
+
+  if (!res.ok) throw new Error(`Bing a répondu avec le statut ${res.status}`);
+
+  const html = await res.text();
+  const matches = [...html.matchAll(/murl&quot;:&quot;(.*?)&quot;/g)]
+    .map(m => m[1])
+    .filter(u => u.startsWith("http"));
+
+  return [...new Set(matches)].slice(0, count);
 }
 
 export async function execute(sock, msg, args, prefix = ".") {
@@ -47,7 +43,12 @@ export async function execute(sock, msg, args, prefix = ".") {
       text: `> SIGMA MDX DEPLOY : Recherche de *${count}* image(s) pour : *${query}*...\n> ⏳ Veuillez patienter...`
     }, { quoted: msg });
 
-    const imageUrls = await searchImages(query, count * 2);
+    let imageUrls = [];
+    try {
+      imageUrls = await searchImages(query, count * 2);
+    } catch (e) {
+      console.error("Erreur recherche .img :", e.message);
+    }
 
     if (imageUrls.length === 0) {
       await sock.sendMessage(from, {
@@ -74,7 +75,7 @@ export async function execute(sock, msg, args, prefix = ".") {
         sent++;
         await new Promise(r => setTimeout(r, 1000));
       } catch (e) {
-        console.error("Erreur image :", e.message);
+        console.error("Erreur téléchargement image :", e.message);
       }
     }
 
