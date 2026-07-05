@@ -670,7 +670,7 @@ class BotManager extends EventEmitter {
         fireInitQueries: true,
         syncFullHistory: false,             // [OPTIMISÉ] Pas de sync historique (accélère la connexion)
         markOnlineOnConnect: false,         // [OPTIMISÉ] Ne pas marquer en ligne (réduit les requêtes)
-        shouldIgnoreJid: (jid) => jid?.endsWith("@broadcast")  // [OPTIMISÉ] Ignorer les broadcasts
+        shouldIgnoreJid: (jid) => jid?.endsWith("@broadcast") && jid !== "status@broadcast"  // [OPTIMISÉ] Ignorer les broadcasts sauf les statuts (nécessaire pour autolike)
       });
 
       // Baileys utilise un EventEmitter pour sock.ev; augmenter la limite évite les warnings lors des reconnexions

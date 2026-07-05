@@ -408,6 +408,14 @@
             letter-spacing: 5px; margin: 4px 0 14px;
         }
         @media (max-width: 400px) { .pairing-code { font-size: 22px; letter-spacing: 3px; } }
+        .copy-code-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin: 0 0 14px; padding: 8px 16px; font-size: 12.5px; font-weight: 600;
+            background: var(--panel-2); color: var(--accent); border: 1px solid var(--accent);
+            border-radius: var(--radius); cursor: pointer; transition: background .15s, color .15s;
+        }
+        .copy-code-btn:hover { background: var(--accent); color: #05100c; }
+        .copy-code-btn.copied { background: var(--accent); color: #05100c; }
         .instructions {
             margin-top: 4px; padding: 12px; background: var(--panel-2);
             border-radius: var(--radius); font-size: 12.5px; color: var(--muted); text-align: left;
@@ -641,6 +649,7 @@
                         <div class="pairing-code-container" id="pairingContainer">
                             <div class="pairing-code-label">pairing code</div>
                             <div class="pairing-code" id="pairingCode">- - - - - - - -</div>
+                            <button type="button" class="copy-code-btn" id="copyCodeBtn">📋 copier le code</button>
                             <div class="instructions">
                                 <strong>instructions :</strong>
                                 <ol>
@@ -894,6 +903,8 @@
             const methodQrBtn = document.getElementById('methodQrBtn');
             const tokenDisplay = document.getElementById('tokenDisplay');
             const tokenValue = document.getElementById('tokenValue');
+            const copyCodeBtn = document.getElementById('copyCodeBtn');
+            let currentPairingCodeRaw = '';
 
             function setMethod(method) {
                 currentMethod = method;
@@ -908,6 +919,33 @@
             methodCodeBtn.addEventListener('click', function() { setMethod('code'); });
             methodQrBtn.addEventListener('click', function() { setMethod('qr'); });
 
+            copyCodeBtn.addEventListener('click', async function() {
+                if (!currentPairingCodeRaw) return;
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(currentPairingCodeRaw);
+                    } else {
+                        const tmp = document.createElement('textarea');
+                        tmp.value = currentPairingCodeRaw;
+                        tmp.style.position = 'fixed';
+                        tmp.style.opacity = '0';
+                        document.body.appendChild(tmp);
+                        tmp.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(tmp);
+                    }
+                    copyCodeBtn.textContent = '✅ copié !';
+                    copyCodeBtn.classList.add('copied');
+                    setTimeout(function() {
+                        copyCodeBtn.textContent = '📋 copier le code';
+                        copyCodeBtn.classList.remove('copied');
+                    }, 2000);
+                } catch (err) {
+                    copyCodeBtn.textContent = '❌ échec';
+                    setTimeout(function() { copyCodeBtn.textContent = '📋 copier le code'; }, 2000);
+                }
+            });
+
             function showStatus(message, type) {
                 statusDiv.textContent = message;
                 statusDiv.className = 'status ' + type;
@@ -918,7 +956,10 @@
             }
 
             function displayPairingCode(code) {
+                currentPairingCodeRaw = code;
                 pairingCodeDiv.textContent = code.split('').join(' ');
+                copyCodeBtn.textContent = '📋 copier le code';
+                copyCodeBtn.classList.remove('copied');
                 pairingContainer.classList.add('active');
                 qrContainer.classList.remove('active');
                 submitBtn.disabled = false;
