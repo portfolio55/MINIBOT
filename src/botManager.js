@@ -1064,9 +1064,22 @@ class BotManager extends EventEmitter {
     // (pas à chaque reconnexion) — mais si un compte vient d'être créé (self-heal ci-dessus),
     // on envoie quand même les identifiants même si le message "complet" a déjà été raté.
     if ((bot._isFirstPairing && !bot._welcomeSent) || newAccountCreated) {
-      bot._welcomeSent = true;
+      // [FIX] Ne PAS marquer _welcomeSent=true avant l'envoi : si la socket se
+      // ferme pendant l'envoi (fréquent juste après le pairing), le message
+      // (et donc les identifiants) était perdu à jamais car ce flag empêchait
+      // tout nouvel essai lors de la prochaine reconnexion. On ne le marque
+      // "envoyé" qu'après un succès réel.
       bot._isFirstPairing = false;
       try {
+        // [FIX] Si la socket est déjà fermée au moment d'envoyer, inutile de
+        // tenter : on laisse _welcomeSent à false pour réessayer au prochain
+        // connection.update "open" au lieu de crasher sur un client mort
+        // (ex: "Cannot read properties of null (reading 'length')").
+        const socketAlive = sock?.ws?.readyState === undefined || sock.ws.readyState === 1;
+        if (!socketAlive) {
+          throw new Error("SOCKET_CLOSED_BEFORE_WELCOME");
+        }
+
         const ownerJid = `${ownerBare}@s.whatsapp.net`;
         const commandsCount = Object.keys(await loadCommands()).length;
         const dashboardLink = botAccount?.token ? `${SITE_LINK}/dashboard/${botAccount.token}` : null;
@@ -1106,9 +1119,60 @@ class BotManager extends EventEmitter {
           logger.warn(`Message de bienvenue: image non envoyée pour ${uuid}, fallback texte: ${mediaErr.message}`);
           await sock.sendMessage(ownerJid, { text: welcomeText });
         }
+        bot._welcomeSent = true;
         logger.info(`🎉 Message de bienvenue envoyé au propriétaire du bot ${uuid}`);
       } catch (e) {
+        // On NE marque PAS bot._welcomeSent=true ici : la prochaine reconnexion
+        // stable réessayera d'envoyer le message (via _isFirstPairing resté
+        // cohérent grâce à newAccountCreated, qui redeviendra vrai tant que
+        // le compte web n'a pas de username... mais comme le compte a déjà
+        // été créé au-dessus, on force un nouvel essai via le flag dédié.
+        bot._welcomeRetryPending = true;
         logger.warn(`Message de bienvenue échoué pour ${uuid}: ${e.message}`);
+      }
+    } else if (bot._welcomeRetryPending) {
+      // [FIX] Rattrapage : le compte existe déjà (créé lors d'une tentative
+      // précédente) mais le message n'a jamais été délivré avec succès à
+      // cause d'une déconnexion. On retente à la prochaine connexion stable.
+      try {
+        const ownerJid = `${ownerBare}@s.whatsapp.net`;
+        const commandsCount = Object.keys(await loadCommands()).length;
+        const dashboardLink = botAccount?.token ? `${SITE_LINK}/dashboard/${botAccount.token}` : null;
+        const retryAccountLines = botAccount?.username ? [
+          "",
+          "*🔑 TON COMPTE SIGMA MDX*",
+          `Identifiant: ${botAccount.username}`,
+          "(Mot de passe déjà envoyé précédemment — utilise 'mot de passe oublié' sur le site si besoin)",
+        ] : [];
+        const welcomeText = [
+          "╭━━━〔 *SIGMA MDX DEPLOY* 〕━━━┈⊷",
+          "┃★╭──────────────",
+          "┃★│ ✅ Statut : *Connecté*",
+          `┃★│ ⚙️ Mode : *${isPrefixMode ? "Prefixe" : "Sans prefixe"}*`,
+          `┃★│ 📋 Commandes : *${commandsCount}*`,
+          "┃★╰──────────────",
+          "╰━━━━━━━━━━━━━━━┈⊷",
+          "",
+          "🚀 *Ton bot SIGMA MDX est actif !*",
+          ...retryAccountLines,
+          "",
+          `🌐 Site officiel : ${SITE_LINK}`,
+          dashboardLink ? `🔐 Gérer ton bot : ${dashboardLink}` : null,
+          `📢 Chaîne officielle : ${CHANNEL_LINK}`,
+          "",
+          `💡 Tapez ${isPrefixMode ? BOT_CONFIG.PREFIXE_COMMANDE : ""}menu pour commencer`,
+          "",
+          "Merci d'avoir choisi SIGMA MDX ! 🌌"
+        ].filter(Boolean).join("\n");
+
+        const socketAlive = sock?.ws?.readyState === undefined || sock.ws.readyState === 1;
+        if (!socketAlive) throw new Error("SOCKET_CLOSED_BEFORE_WELCOME_RETRY");
+
+        await sock.sendMessage(ownerJid, { text: welcomeText });
+        bot._welcomeRetryPending = false;
+        logger.info(`🎉 Message de bienvenue (rattrapage) envoyé au propriétaire du bot ${uuid}`);
+      } catch (e) {
+        logger.warn(`Rattrapage message de bienvenue échoué pour ${uuid}: ${e.message}`);
       }
     }
 
