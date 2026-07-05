@@ -388,45 +388,49 @@ export async function execute(sock, msg, args, from, botContext) {
       mediaPayload = { image: { url: menuMedia.url }, caption: text };
     }
 
-    // 1. Envoi du menu avec le média (image/gif/vidéo + texte du menu en légende)
-    let menuSent = false;
-    try {
-      await Promise.race([
-        sock.sendMessage(from, mediaPayload, { quoted: msg }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("MEDIA_TIMEOUT")), 20000)
-        )
-      ]);
-      menuSent = true;
-    } catch (mediaErr) {
+    // [FIX LATENCE] Avant : l'audio attendait que l'envoi du média (image/gif/vidéo)
+    // soit ENTIÈREMENT terminé avant de commencer à s'envoyer (jusqu'à 20s d'attente),
+    // puis attendait encore jusqu'à 30s pour lui-même — les deux envois étaient
+    // strictement séquentiels, jamais simultanés. WhatsApp ne permet pas de combiner
+    // image+audio dans un seul message (ce sont deux bulles distinctes), mais rien
+    // n'empêche de lancer les deux uploads EN MÊME TEMPS plutôt que l'un après l'autre.
+    // On démarre donc les deux envois en parallèle : l'audio arrive maintenant quasi
+    // au même moment que l'image au lieu d'accumuler les deux délais bout à bout.
+    const mediaSendPromise = Promise.race([
+      sock.sendMessage(from, mediaPayload, { quoted: msg }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("MEDIA_TIMEOUT")), 20000)
+      )
+    ]);
+
+    const audioSendPromise = Promise.race([
+      sock.sendMessage(
+        from,
+        {
+          audio: { url: "https://files.catbox.moe/02zeco.mp3" },
+          mimetype: "audio/mpeg"
+        },
+        { quoted: msg }
+      ),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("AUDIO_TIMEOUT")), 30000)
+      )
+    ]);
+
+    const [mediaResult, audioResult] = await Promise.allSettled([mediaSendPromise, audioSendPromise]);
+
+    if (mediaResult.status === "rejected") {
       // Si le média échoue (timeout / réseau), envoyer le menu en texte uniquement
-      console.warn("⚠️ Menu: média non chargé, envoi du menu en texte:", mediaErr.message);
-      await sock.sendMessage(from, { text }, { quoted: msg });
-      menuSent = true;
+      console.warn("⚠️ Menu: média non chargé, envoi du menu en texte:", mediaResult.reason?.message);
+      try {
+        await sock.sendMessage(from, { text }, { quoted: msg });
+      } catch (textErr) {
+        console.error("❌ Menu: échec envoi texte de secours:", textErr.message);
+      }
     }
 
-    // 2. Envoi de l'audio du menu (toujours après l'image ou le texte)
-    // [FIX] L'audio est mis dans la même file d'envoi que le média : il doit donc
-    // attendre que celui-ci finisse. 10s était trop court et faisait abandonner
-    // l'attente de l'audio avant même qu'il ait eu la main -> audio jamais reçu.
-    if (menuSent) {
-      try {
-        await Promise.race([
-          sock.sendMessage(
-            from,
-            {
-              audio: { url: "https://files.catbox.moe/02zeco.mp3" },
-              mimetype: "audio/mpeg"
-            },
-            { quoted: msg }
-          ),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("AUDIO_TIMEOUT")), 30000)
-          )
-        ]);
-      } catch (audioErr) {
-        console.warn("⚠️ Menu: audio non envoyé (timeout ou erreur réseau):", audioErr.message);
-      }
+    if (audioResult.status === "rejected") {
+      console.warn("⚠️ Menu: audio non envoyé (timeout ou erreur réseau):", audioResult.reason?.message);
     }
 
   } catch (err) {
