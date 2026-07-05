@@ -96,6 +96,16 @@ const section = (title, items) => {
   ].join("\n");
 };
 
+// [MENU GIRL] Section au style "fleurs" — arrondi, doux, différent du style boy.
+const sectionGirl = (title, items) => {
+  const list = (items || []).map((x) => `│ ⊹ ${x}`).join("\n");
+  return [
+    `┌─❀ *${title}* ❀─┐`,
+    list || "│ ⊹ (vide)",
+    "└" + "─".repeat(Math.max(18, title.length + 4)) + "┘"
+  ].join("\n");
+};
+
 const normalizeCommandModule = (mod) => {
   const raw = mod?.default ?? mod;
   if (!raw || typeof raw !== "object") return null;
@@ -276,7 +286,29 @@ export async function execute(sock, msg, args, from, botContext) {
     const platform = os.platform();
 
     const headerIcon = currentMode === "girl" ? "🎀" : "⚡";
-    const header = [
+    const isGirl = currentMode === "girl";
+
+    // [MENU GIRL] Header au style "fleurs" — bordures arrondies, séparateur étoilé,
+    // distinct du header "gamer" utilisé en mode boy.
+    const header = isGirl ? [
+      `╭─❀• 🎀 *${botName}* 🎀 •❀─╮`,
+      "│",
+      `│  ✨ Owner   : *${ownerName}*`,
+      brandInstagram ? `│  📸 Insta   : *${brandInstagram}*` : null,
+      `│  💖 User    : *${userName}*`,
+      `│  🦋 Mode    : *${modeLabel}*`,
+      `│  🌐 Type    : *NodeJs*`,
+      `│  💻 Platform: *${platform}*`,
+      `│  🔖 Prefix  : [${prefix}]`,
+      `│  🏷️ Version : *3.1.0*`,
+      "│",
+      "╰─────────────────────╯",
+      "",
+      `  ⋆｡‧˚ʚ ${headerIcon} Coucou *${userName}* ɞ˚‧｡⋆`,
+      brandDesc ? `  📝 ${brandDesc}` : null,
+      brandPhone ? `  📞 ${brandPhone}` : null,
+      brandChannel ? `  📢 ${brandChannel}` : null
+    ].filter(Boolean).join("\n") : [
       `╭━━━〔 *${botName}* 〕━━━┈⊷`,
       "┃★╭──────────────",
       `┃★│ Owner : *${ownerName}*`,
@@ -291,7 +323,7 @@ export async function execute(sock, msg, args, from, botContext) {
       "┃★╰──────────────",
       "╰━━━━━━━━━━━━━━━┈⊷",
       "",
-      `> ${headerIcon} ${currentMode === "girl" ? "Coucou" : "Yo"} *${userName}* !`,
+      `> ${headerIcon} Yo *${userName}* !`,
       brandDesc ? `> 📝 ${brandDesc}` : null,
       brandPhone ? `> 📞 ${brandPhone}` : null,
       brandChannel ? `> 📢 ${brandChannel}` : null
@@ -301,6 +333,7 @@ export async function execute(sock, msg, args, from, botContext) {
 
     const remaining = new Set(allCommands.map((c) => String(c).toLowerCase()));
     const sections = [];
+    const buildSection = isGirl ? sectionGirl : section;
 
     for (const cat of MANUAL_CATEGORIES) {
       const items = [];
@@ -311,12 +344,12 @@ export async function execute(sock, msg, args, from, botContext) {
           remaining.delete(key);
         }
       }
-      if (items.length > 0) sections.push(section(cat.title, items));
+      if (items.length > 0) sections.push(buildSection(cat.title, items));
     }
 
     const otherItems = [...remaining].sort((a, b) => a.localeCompare(b));
     if (otherItems.length > 0) {
-      sections.push(section("Other Menu", otherItems));
+      sections.push(buildSection("Other Menu", otherItems));
     }
 
     if (duplicates.length > 0) {
@@ -324,7 +357,11 @@ export async function execute(sock, msg, args, from, botContext) {
         const srcs = (sourcesByName.get(n) || []).join(" | ");
         return `${n}  (${srcs})`;
       });
-      sections.push(section("Duplicates Detected", dupLines));
+      sections.push(buildSection("Duplicates Detected", dupLines));
+    }
+
+    if (isGirl) {
+      sections.push("  🌸 ⋆｡‧˚ Fin du menu ˚‧｡⋆ 🌸");
     }
 
     const text = [header, "", ...sections].join("\n\n");
