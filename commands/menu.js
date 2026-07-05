@@ -406,6 +406,9 @@ export async function execute(sock, msg, args, from, botContext) {
     }
 
     // 2. Envoi de l'audio du menu (toujours après l'image ou le texte)
+    // [FIX] L'audio est mis dans la même file d'envoi que le média : il doit donc
+    // attendre que celui-ci finisse. 10s était trop court et faisait abandonner
+    // l'attente de l'audio avant même qu'il ait eu la main -> audio jamais reçu.
     if (menuSent) {
       try {
         await Promise.race([
@@ -418,7 +421,7 @@ export async function execute(sock, msg, args, from, botContext) {
             { quoted: msg }
           ),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("AUDIO_TIMEOUT")), 10000)
+            setTimeout(() => reject(new Error("AUDIO_TIMEOUT")), 30000)
           )
         ]);
       } catch (audioErr) {

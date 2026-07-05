@@ -1381,13 +1381,18 @@ class BotManager extends EventEmitter {
     if (!bot || bot.sendQueueRunning) return;
     bot.sendQueueRunning = true;
 
-    // [AMÉLIORÉ] TTL pour les messages en queue (30s max d'attente)
-    const MESSAGE_TTL_MS = parseInt(process.env.BOT_SEND_TTL_MS || "30000");
+    // [AMÉLIORÉ] TTL pour les messages en queue (45s max d'attente)
+    // [FIX] Relevé de 30s à 45s : certaines commandes (ex: .menu) envoient un média
+    // PUIS un audio juste derrière dans la même file. L'audio doit attendre que le
+    // média finisse (jusqu'à SEND_TIMEOUT_MS) ; avec un TTL de 30s == au timeout du
+    // média, l'audio expirait quasi systématiquement avant même d'avoir sa chance.
+    const MESSAGE_TTL_MS = parseInt(process.env.BOT_SEND_TTL_MS || "45000");
     // [FIX] Timeout par envoi individuel : sans ça, un média lourd/lent (ex: grosse vidéo)
     // bloque `await originalSendMessage(...)` indéfiniment, ce qui gèle toute la file pour
     // CE bot — tous les messages suivants (d'autres commandes/utilisateurs) attendent derrière
-    // et finissent par expirer via le TTL de 30s ("Message expiré"). On borne donc chaque envoi.
-    const SEND_TIMEOUT_MS = parseInt(process.env.BOT_SEND_TIMEOUT_MS || "35000");
+    // et finissent par expirer via le TTL. On borne donc chaque envoi, avec une marge sous
+    // le TTL pour que le message suivant (ex: l'audio du menu) ait le temps de passer.
+    const SEND_TIMEOUT_MS = parseInt(process.env.BOT_SEND_TIMEOUT_MS || "25000");
 
     try {
       while (bot.sendQueue && bot.sendQueue.length > 0) {
