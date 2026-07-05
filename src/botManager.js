@@ -725,6 +725,37 @@ class BotManager extends EventEmitter {
         });
       };
 
+      // [PERF FIX 300 BOTS] Les protections (antilink, welcome, goodbye, anti-promote, etc.)
+      // appellent chacune `sock.groupMetadata(jid)` indépendamment sur le MÊME message —
+      // sans cache, chaque appel est un aller-retour réseau vers WhatsApp. Sur un message
+      // de groupe, ça pouvait déclencher 3 à 6 requêtes réseau redondantes pour la même
+      // information (souvent juste pour vérifier si le bot est admin). Multiplié par 300
+      // bots actifs, ça ajoute une latence perceptible et une charge réseau inutile.
+      // On enveloppe `sock.groupMetadata` avec un cache par bot (TTL 30s) : toutes les
+      // protections en bénéficient automatiquement sans modifier leur code. Le cache est
+      // invalidé immédiatement sur changement de participants/sujet pour ne jamais servir
+      // un statut admin périmé.
+      const GROUP_META_TTL_MS = parseInt(process.env.GROUP_META_CACHE_TTL_MS || "30000");
+      bot._groupMetaCache = new Map();
+      const originalGroupMetadata = sock.groupMetadata.bind(sock);
+      sock.groupMetadata = async (jid) => {
+        const cached = bot._groupMetaCache.get(jid);
+        if (cached && (Date.now() - cached.ts) < GROUP_META_TTL_MS) {
+          return cached.data;
+        }
+        const data = await originalGroupMetadata(jid);
+        bot._groupMetaCache.set(jid, { data, ts: Date.now() });
+        return data;
+      };
+      sock.ev.on("group-participants.update", (update) => {
+        bot._groupMetaCache.delete(update.id);
+      });
+      sock.ev.on("groups.update", (updates) => {
+        for (const u of updates) {
+          if (u.id) bot._groupMetaCache.delete(u.id);
+        }
+      });
+
       // Gérer la connexion
       let pairingCode = null;
 
