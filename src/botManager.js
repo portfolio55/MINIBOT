@@ -1010,6 +1010,55 @@ class BotManager extends EventEmitter {
   }
 
   /**
+   * [DELMSGS] Mémorise l'ID d'un message reçu dans un groupe, par expéditeur,
+   * pour permettre une suppression groupée ultérieure (.delmsgs).
+   * Fenêtre glissante bornée en mémoire (par expéditeur et par groupe) — aucune persistance disque.
+   */
+  _trackGroupMessage(bot, groupJid, senderJid, msgId) {
+    if (!bot._groupMsgCache) bot._groupMsgCache = new Map();
+    let groupCache = bot._groupMsgCache.get(groupJid);
+    if (!groupCache) {
+      groupCache = new Map();
+      bot._groupMsgCache.set(groupJid, groupCache);
+    }
+    let userMsgs = groupCache.get(senderJid);
+    if (!userMsgs) {
+      userMsgs = [];
+      groupCache.set(senderJid, userMsgs);
+    }
+    userMsgs.push({ id: msgId, ts: Date.now() });
+
+    const MAX_PER_USER = 300;
+    if (userMsgs.length > MAX_PER_USER) userMsgs.shift();
+
+    // Protection mémoire : borne le nombre d'expéditeurs suivis par groupe
+    const MAX_SENDERS_PER_GROUP = 500;
+    if (groupCache.size > MAX_SENDERS_PER_GROUP) {
+      const oldestSender = groupCache.keys().next().value;
+      groupCache.delete(oldestSender);
+    }
+  }
+
+  /**
+   * [DELMSGS] Retourne les IDs de messages mémorisés (non expirés) d'un utilisateur dans un groupe.
+   */
+  getCachedMessagesForUser(uuid, groupJid, userJid) {
+    const bot = this.bots.get(uuid);
+    const list = bot?._groupMsgCache?.get(groupJid)?.get(userJid) || [];
+    const TTL_MS = 48 * 60 * 60 * 1000; // 48h
+    const now = Date.now();
+    return list.filter((m) => now - m.ts <= TTL_MS).map((m) => m.id);
+  }
+
+  /**
+   * [DELMSGS] Vide le cache de messages d'un utilisateur dans un groupe (après suppression réussie).
+   */
+  clearCachedMessagesForUser(uuid, groupJid, userJid) {
+    const bot = this.bots.get(uuid);
+    bot?._groupMsgCache?.get(groupJid)?.delete(userJid);
+  }
+
+  /**
    * Gère les messages reçus
    */
   async handleMessages(uuid, messages, type) {
@@ -1045,6 +1094,11 @@ class BotManager extends EventEmitter {
           return;
         }
       }
+    }
+
+    // [DELMSGS] Mémoriser les IDs de messages par groupe/expéditeur pour permettre une suppression groupée (.delmsgs)
+    if (isGroup && !msg.key.fromMe && sender && msg.key.id) {
+      this._trackGroupMessage(bot, from, sender, msg.key.id);
     }
 
     // [OPTIMISÉ] Extraire le texte EN PREMIER pour rejeter rapidement les non-commandes
@@ -1104,7 +1158,11 @@ class BotManager extends EventEmitter {
 
     logger.info(`⚡ ${cmdName} par ${senderNum}`);
 
-    const botContext = { sessionPath: bot.sessionPath, owners, sudoList, uuid, isOwner, isSudo, groupManager: bot.groupManager };
+    const botContext = {
+      sessionPath: bot.sessionPath, owners, sudoList, uuid, isOwner, isSudo, groupManager: bot.groupManager,
+      getUserMessageIds: (groupJid, userJid) => this.getCachedMessagesForUser(uuid, groupJid, userJid),
+      clearUserMessages: (groupJid, userJid) => this.clearCachedMessagesForUser(uuid, groupJid, userJid)
+    };
     // [AMÉLIORÉ] Timeout configurable par commande, avec meilleure gestion des erreurs
     const CMD_TIMEOUT_MS = parseInt(process.env.CMD_TIMEOUT_MS || "60000");
     const cmdStartTime = Date.now();
