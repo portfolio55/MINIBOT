@@ -35,6 +35,27 @@ async function downloadFromGifted(video, attempt = 1) {
   }
 }
 
+const YT_URL_REGEX = /(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/\S+/i;
+
+async function fromDirectUrl(url) {
+  try {
+    const info = await yts({ videoId: extractVideoId(url) });
+    return downloadFromGifted({
+      url,
+      title: info?.title,
+      timestamp: info?.timestamp || info?.duration?.timestamp,
+      thumbnail: info?.thumbnail
+    });
+  } catch (e) {
+    return downloadFromGifted({ url, title: null, timestamp: "N/A", thumbnail: null });
+  }
+}
+
+function extractVideoId(url) {
+  const match = url.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
 async function tryApis(query) {
   const search = await yts(query);
   const candidates = (search.videos || []).slice(0, 3);
@@ -49,19 +70,23 @@ async function tryApis(query) {
 }
 
 export async function execute(sock, msg, args, from) {
-  const title = args.join(" ").trim();
-  if (!title) {
+  const input = args.join(" ").trim();
+  if (!input) {
     return await sock.sendMessage(from, {
-      text: "> SIGMA MDX DEPLOY : Donne un titre ou un artiste.\nExemple : !play Nom de la chanson"
+      text: "> SIGMA MDX DEPLOY : Donne un lien YouTube ou un titre/artiste.\nExemple : !play https://youtu.be/xxxx\nExemple : !play Nom de la chanson"
     }, { quoted: msg });
   }
 
+  const isUrl = YT_URL_REGEX.test(input);
+
   try {
     await sock.sendMessage(from, {
-      text: `> SIGMA MDX DEPLOY : 🔍 Recherche de *${title}* en cours...`
+      text: isUrl
+        ? "> SIGMA MDX DEPLOY : 🔍 Traitement du lien en cours..."
+        : `> SIGMA MDX DEPLOY : 🔍 Recherche de *${input}* en cours...`
     }, { quoted: msg });
 
-    const video = await tryApis(title);
+    const video = isUrl ? await fromDirectUrl(input) : await tryApis(input);
 
     if (!video || !video.download_url) {
       return await sock.sendMessage(from, {
