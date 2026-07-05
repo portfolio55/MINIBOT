@@ -24,9 +24,9 @@ const BOY_MEDIA = [
   "https://files.catbox.moe/j91nis.jpeg",
   "https://files.catbox.moe/q1761g.jpeg",
   "https://files.catbox.moe/2y9cv0.jpeg",
-  "https://files.catbox.moe/d8sbke.gif",
-  "https://files.catbox.moe/9rfw38.mov",
-  "https://files.catbox.moe/j00rij.mov"
+  "https://files.catbox.moe/d8sbke.gif"
+  // [FIX] Fichiers .mov retirés : trop lourds/lents à uploader via Baileys,
+  // ce qui bloquait la file d'envoi du bot et causait des timeouts en cascade sur .menu.
 ];
 
 const GIRL_MEDIA = [

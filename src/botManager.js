@@ -1383,6 +1383,11 @@ class BotManager extends EventEmitter {
 
     // [AMÉLIORÉ] TTL pour les messages en queue (30s max d'attente)
     const MESSAGE_TTL_MS = parseInt(process.env.BOT_SEND_TTL_MS || "30000");
+    // [FIX] Timeout par envoi individuel : sans ça, un média lourd/lent (ex: grosse vidéo)
+    // bloque `await originalSendMessage(...)` indéfiniment, ce qui gèle toute la file pour
+    // CE bot — tous les messages suivants (d'autres commandes/utilisateurs) attendent derrière
+    // et finissent par expirer via le TTL de 30s ("Message expiré"). On borne donc chaque envoi.
+    const SEND_TIMEOUT_MS = parseInt(process.env.BOT_SEND_TIMEOUT_MS || "35000");
 
     try {
       while (bot.sendQueue && bot.sendQueue.length > 0) {
@@ -1402,7 +1407,12 @@ class BotManager extends EventEmitter {
         }
 
         try {
-          const res = await originalSendMessage(...item.sendArgs);
+          const res = await Promise.race([
+            originalSendMessage(...item.sendArgs),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error(`Envoi trop lent (timeout ${SEND_TIMEOUT_MS}ms) — média probablement trop lourd ou lien inaccessible`)), SEND_TIMEOUT_MS)
+            )
+          ]);
           bot.sendLastSentAt = Date.now();
           item.resolve(res);
         } catch (e) {
