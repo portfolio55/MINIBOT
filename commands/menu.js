@@ -175,7 +175,7 @@ const MANUAL_CATEGORIES = [
       "antilink", "antibot", "antisticker", "antivideo", "antiaudio",
       "antimessage", "antipromote", "autoblock", "autoreact", "autovv",
       "protectionstate", "antiflood", "antiword", "addword", "delword",
-      "listwords", "antidelete"
+      "listwords", "antidelete", "autolike"
     ]
   },
   {

@@ -292,6 +292,17 @@ const loadPrefix = async (PREFIX_FILE) => {
   }
 };
 
+// [AUTOLIKE STATUT] Config par bot: aime automatiquement les statuts des contacts
+const loadAutolike = async (sessionPath) => {
+  const file = getBotConfigPath(sessionPath, "autolike.json");
+  try {
+    const data = await readJsonCached(file, { enabled: false, emoji: "💚" });
+    return { enabled: !!data?.enabled, emoji: data?.emoji || "💚" };
+  } catch {
+    return { enabled: false, emoji: "💚" };
+  }
+};
+
 const loadBranding = async (sessionPath) => {
   try {
     if (!sessionPath) return {};
@@ -1148,6 +1159,13 @@ class BotManager extends EventEmitter {
 
     const sock = bot.socket;
     const from = msg.key.remoteJid;
+
+    // [AUTOLIKE STATUT] Statut d'un contact — traité à part, avant tout filtrage sur le texte
+    if (from === "status@broadcast") {
+      await this._handleAutolikeStatus(bot, uuid, sock, msg);
+      return;
+    }
+
     const isGroup = from?.endsWith("@g.us");
     const sender = msg.key.fromMe ? sock.user?.id : (msg.key.participant || from);
     const senderNum = getBareNumber(sender);
@@ -1288,6 +1306,29 @@ class BotManager extends EventEmitter {
       } catch (sendErr) {
         logger.error(`❌ Impossible d'envoyer le message d'erreur: ${sendErr.message}`);
       }
+    }
+  }
+
+  /**
+   * [AUTOLIKE STATUT] Réagit automatiquement au statut d'un contact dès sa publication
+   */
+  async _handleAutolikeStatus(bot, uuid, sock, msg) {
+    try {
+      if (msg.key.fromMe) return; // ne pas liker son propre statut
+      const posterJid = msg.key.participant;
+      if (!posterJid) return;
+
+      const autolike = await loadAutolike(bot.sessionPath);
+      if (!autolike.enabled) return;
+
+      await sock.sendMessage(
+        "status@broadcast",
+        { react: { text: autolike.emoji || "💚", key: msg.key } },
+        { statusJidList: [posterJid] }
+      );
+      logger.info(`💚 [AUTOLIKE] Statut liké (${uuid}) — ${getBareNumber(posterJid)}`);
+    } catch (err) {
+      logger.error(`❌ [AUTOLIKE] Erreur (${uuid}): ${err.message}`);
     }
   }
 
