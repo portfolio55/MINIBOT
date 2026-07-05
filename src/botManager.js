@@ -23,7 +23,7 @@ import { initProtections } from "../protections.js";
 import { initProtections as initProtections2 } from "../protections2.js";
 import { createGroupManager } from "../groupManager.js";
 import { usePostgresAuthState, deleteAuthState, hasAuthState } from "./usePostgresAuthState.js";
-import { dbGetBotAccount, dbSetBotAccount, dbHasPhoneUsedTrial, dbRecordTrialPhone } from "./db.js";
+import { dbGetBotAccount, dbSetBotAccount, dbHasPhoneUsedTrial, dbRecordTrialPhone, dbHasIpUsedTrial, dbRecordTrialIp } from "./db.js";
 import { handlePendingPlayReply } from "../commands/play.js";
 import { generateCredentials } from "./services/moneyfusion.js";
 import { SUBSCRIPTION_PLANS } from "./config.js";
@@ -549,11 +549,12 @@ class BotManager extends EventEmitter {
    * @param {boolean} usePairingLock - Active le lock d'appairage (désactiver pour la reconnexion au boot)
    * @returns {Promise<void>}
    */
-  async createBot(uuid, phoneNumber, usePairingLock = true) {
+  async createBot(uuid, phoneNumber, usePairingLock = true, pairingIp = null) {
     // Idempotent: si le bot existe déjà, on met à jour les infos et on continue
     if (this.bots.has(uuid)) {
       const existing = this.bots.get(uuid);
       existing.phoneNumber = phoneNumber;
+      if (pairingIp) existing.pairingIp = pairingIp;
       this.bots.set(uuid, existing);
       logger.info(`Bot déjà présent en mémoire: ${uuid} (${phoneNumber})`);
       return;
@@ -574,6 +575,7 @@ class BotManager extends EventEmitter {
     this.bots.set(uuid, {
       uuid,
       phoneNumber,
+      pairingIp,
       sessionPath,
       status: "pairing",
       socket: null,
@@ -955,10 +957,17 @@ class BotManager extends EventEmitter {
         const { username, password } = generateCredentials(ownerBare);
         const passwordHash = await bcrypt.hash(password, 10);
 
-        // [ANTI-ABUS ESSAI 24H] Ce numéro a-t-il déjà consommé un essai gratuit par le passé
-        // (même via un bot supprimé depuis) ? Si oui, on crée quand même le compte (pour
-        // permettre la connexion/paiement) mais SANS accorder un nouvel essai gratuit.
-        const alreadyUsedTrial = await dbHasPhoneUsedTrial(ownerBare);
+        // [ANTI-ABUS ESSAI 24H] Ce numéro OU cette IP a-t-il déjà consommé un essai gratuit
+        // par le passé (même via un bot supprimé depuis) ? Le contrôle par IP empêche une
+        // même personne d'enchaîner les essais gratuits en changeant simplement de numéro.
+        // Si oui, on crée quand même le compte (pour permettre la connexion/paiement) mais
+        // SANS accorder un nouvel essai gratuit.
+        const pairingIp = bot.pairingIp || null;
+        const [usedByPhone, usedByIp] = await Promise.all([
+          dbHasPhoneUsedTrial(ownerBare),
+          dbHasIpUsedTrial(pairingIp),
+        ]);
+        const alreadyUsedTrial = usedByPhone || usedByIp;
 
         if (alreadyUsedTrial) {
           await dbSetBotAccount(uuid, {
@@ -988,6 +997,7 @@ class BotManager extends EventEmitter {
             trialUsed: true,
           });
           await dbRecordTrialPhone(ownerBare);
+          await dbRecordTrialIp(pairingIp);
           accountLines = [
             "",
             "*🔑 TON COMPTE SIGMA MDX*",

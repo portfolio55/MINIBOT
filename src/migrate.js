@@ -238,6 +238,15 @@ async function ensureTables() {
       used_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // [ANTI-ABUS ESSAI 24H] Historique des IP ayant déjà consommé un essai gratuit.
+  // Empêche une même personne d'enchaîner plusieurs essais gratuits en changeant
+  // simplement de numéro de téléphone (le blocage par numéro seul est contournable ainsi).
+  await query(`
+    CREATE TABLE IF NOT EXISTS trial_ip_history (
+      ip_address VARCHAR(45) PRIMARY KEY,
+      used_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
   await query(`
     CREATE TABLE IF NOT EXISTS payments (
       id SERIAL PRIMARY KEY,

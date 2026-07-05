@@ -193,6 +193,25 @@ export async function dbRecordTrialPhone(phoneNumber) {
   );
 }
 
+// [ANTI-ABUS ESSAI 24H] Même logique que dbHasPhoneUsedTrial/dbRecordTrialPhone mais par IP,
+// pour empêcher une même personne d'obtenir plusieurs essais gratuits en changeant de numéro.
+export async function dbHasIpUsedTrial(ipAddress) {
+  if (!ipAddress) return false;
+  const res = await query(
+    `SELECT 1 FROM trial_ip_history WHERE ip_address = $1`,
+    [ipAddress]
+  );
+  return res.rows.length > 0;
+}
+
+export async function dbRecordTrialIp(ipAddress) {
+  if (!ipAddress) return;
+  await query(
+    `INSERT INTO trial_ip_history (ip_address) VALUES ($1) ON CONFLICT (ip_address) DO NOTHING`,
+    [ipAddress]
+  );
+}
+
 export async function dbGetExpiredSubscriptions() {
   const res = await query(
     `SELECT uuid, phone_number AS "phoneNumber", status, subscription_expires_at AS "subscriptionExpiresAt"

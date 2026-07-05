@@ -276,8 +276,12 @@ app.post("/api/pairing/start", pairingLimiter, async (req, res) => {
     // Créer le bot dans le registre
     const token = await createBot(uuid, normalizedNumber);
 
+    // [ANTI-ABUS ESSAI 24H] IP du client qui lance le pairing — utilisée en plus du numéro
+    // pour empêcher une même personne d'enchaîner les essais gratuits via plusieurs numéros.
+    const pairingIp = req.ip || req.connection?.remoteAddress || null;
+
     // Créer l'instance dans le BotManager
-    await botManager.createBot(uuid, normalizedNumber);
+    await botManager.createBot(uuid, normalizedNumber, true, pairingIp);
 
     // [AMÉLIORÉ] Démarrer le bot avec retry automatique sur "Connection Closed"
     const MAX_PAIRING_RETRIES = 2;
