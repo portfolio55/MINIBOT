@@ -13,11 +13,15 @@ export async function execute(sock, msg, args, from, botContext) {
 
   try {
     const meta = await sock.groupMetadata(from);
-    const botBare = bareNumber(sock.user?.id);
-    const botParticipant = meta.participants.find((p) => bareNumber(p.id) === botBare);
-    const botIsAdmin = !!(botParticipant && botParticipant.admin);
+    const botBares = [bareNumber(sock.user?.id), bareNumber(sock.user?.lid)].filter(Boolean);
+    const botParticipant = meta.participants.find((p) => botBares.includes(bareNumber(p.id)));
+    const botIsAdmin = !!(botParticipant && (botParticipant.admin === "admin" || botParticipant.admin === "superadmin" || botParticipant.admin));
 
     if (!botIsAdmin) {
+      try {
+        const adminList = meta.participants.filter((p) => p.admin).map((p) => ({ id: p.id, admin: p.admin }));
+        console.log("[delmsgs] bot not admin?", { botBares, botId: sock.user?.id, botLid: sock.user?.lid, found: botParticipant, admins: adminList.slice(0, 15) });
+      } catch {}
       return await sock.sendMessage(from, { text: "❌ Le bot doit être admin du groupe pour supprimer les messages d'un autre membre." });
     }
 
