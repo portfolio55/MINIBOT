@@ -121,7 +121,7 @@ const MANUAL_CATEGORIES = [
   {
     key: "converter",
     title: "Converter Menu",
-    names: ["sticker", "photo", "tts", "tomp4", "vv", "vv2", "take", "img", "static-stick", "telegram-stick"]
+    names: ["sticker", "photo", "tts", "tomp4", "tomp3", "vv", "vv2", "take", "img", "static-stick", "telegram-stick"]
   },
   {
     key: "ai",
