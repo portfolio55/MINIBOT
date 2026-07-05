@@ -46,25 +46,37 @@ export async function usePostgresAuthState(uuid) {
     }
 
     try {
+      const tasks = [];
+
       if (deletes.length > 0) {
-        await query(
-          `DELETE FROM baileys_auth WHERE uuid = $1 AND key = ANY($2)`,
-          [uuid, deletes]
+        tasks.push(
+          query(
+            `DELETE FROM baileys_auth WHERE uuid = $1 AND key = ANY($2)`,
+            [uuid, deletes]
+          )
         );
       }
 
+      // [PERF FIX] Les écritures étaient envoyées une par une avec `await` séquentiel
+      // dans une boucle : chaque clé attendait le round-trip réseau de la précédente
+      // avant de démarrer, ce qui multipliait la latence par le nombre de clés
+      // modifiées (accumulation ressentie comme "bot lent"). On les envoie maintenant
+      // en parallèle (le pool supporte jusqu'à 50 connexions), avec Promise.allSettled
+      // pour continuer même si une écriture échoue individuellement.
       for (const { key, value } of upserts) {
-        try {
-          await query(
+        tasks.push(
+          query(
             `INSERT INTO baileys_auth (uuid, key, value, updated_at)
              VALUES ($1, $2, $3::jsonb, NOW())
              ON CONFLICT (uuid, key) DO UPDATE SET value = $3::jsonb, updated_at = NOW()`,
             [uuid, key, JSON.stringify(value)]
-          );
-        } catch (err) {
-          logger.error(`[AuthState] Flush write error ${key}: ${err.message}`);
-        }
+          ).catch((err) => {
+            logger.error(`[AuthState] Flush write error ${key}: ${err.message}`);
+          })
+        );
       }
+
+      await Promise.allSettled(tasks);
     } catch (err) {
       logger.error(`[AuthState] Flush batch error: ${err.message}`);
     }
