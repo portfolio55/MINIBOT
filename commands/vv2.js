@@ -5,6 +5,15 @@ const getBareNumber = (input) => {
   return String(input).split("@")[0].split(":")[0].replace(/[^0-9]/g, "");
 };
 
+const SITE_LINK = "https://sigmamdx.site";
+const vv2Footer = (source) => [
+  "╭─────────────┈⊷",
+  "┃ 🔓 *Vue unique récupérée*",
+  `┃ 📍 Source : ${source}`,
+  `┃ 🌐 ${SITE_LINK}`,
+  "╰─────────────┈⊷"
+].join("\n");
+
 export const name = "vv2";
 export async function execute(sock, m, args) {
   try {
@@ -34,7 +43,7 @@ export async function execute(sock, m, args) {
 
     let buffer = Buffer.from([]);
     let mediaType = null;
-    let caption = `> SIGMA MDX DEPLOY : Media recupere depuis ${m.key.remoteJid}`;
+    const caption = vv2Footer(m.key.remoteJid);
 
     if (innerMsg.imageMessage) {
       const stream = await downloadContentFromMessage(innerMsg.imageMessage, "image");
@@ -76,6 +85,7 @@ export async function execute(sock, m, args) {
           mimetype: "audio/mp4", 
           ptt: innerMsg.audioMessage?.ptt || false 
         });
+        await sock.sendMessage(ownerJid, { text: caption });
       }
 
       await sock.sendMessage(m.key.remoteJid, { react: { text: "✅", key: m.key } });

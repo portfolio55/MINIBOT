@@ -42,6 +42,11 @@ const BOT_CONFIG = {
   RECOVERY_SWEEP_INTERVAL_MS: parseInt(process.env.RECOVERY_SWEEP_INTERVAL_MS || "120000"),
 };
 
+// [BRANDING] Liens officiels utilisés dans le message de bienvenue
+const SITE_LINK = "https://sigmamdx.site";
+const CHANNEL_LINK = "https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06";
+const WELCOME_IMAGE = "https://files.catbox.moe/bld2md.jpeg";
+
 const CONFIG_CACHE_TTL_MS = Math.max(0, parseInt(process.env.CONFIG_CACHE_TTL_MS || "10000"));
 const jsonCache = new Map();
 
@@ -951,8 +956,10 @@ class BotManager extends EventEmitter {
     // même créés et envoyés dès la prochaine connexion réussie.
     let accountLines = [];
     let newAccountCreated = false;
+    let botAccount = null;
     try {
       const account = await dbGetBotAccount(uuid);
+      botAccount = account;
       if (account && !account.username) {
         const { username, password } = generateCredentials(ownerBare);
         const passwordHash = await bcrypt.hash(password, 10);
@@ -1024,20 +1031,43 @@ class BotManager extends EventEmitter {
       try {
         const ownerJid = `${ownerBare}@s.whatsapp.net`;
         const commandsCount = Object.keys(await loadCommands()).length;
+        const dashboardLink = botAccount?.token ? `${SITE_LINK}/dashboard/${botAccount.token}` : null;
 
-        await sock.sendMessage(ownerJid, {
-          text: [
-            "*SIGMA MDX DEPLOY ACTIF* 🚀",
-            "",
-            `⚙️ Mode: ${isPrefixMode ? 'Prefix' : 'Sans prefix'}`,
-            `📋 Commandes: ${commandsCount}`,
-            ...accountLines,
-            "",
-            `💡 Tapez ${isPrefixMode ? BOT_CONFIG.PREFIXE_COMMANDE : ''}menu pour commencer`,
-            "",
-            `Merci d'avoir choisi SIGMA MDX ! 🌌`
-          ].join("\n")
-        });
+        const welcomeText = [
+          "╭━━━〔 *SIGMA MDX DEPLOY* 〕━━━┈⊷",
+          "┃★╭──────────────",
+          "┃★│ ✅ Statut : *Connecté*",
+          `┃★│ ⚙️ Mode : *${isPrefixMode ? "Prefixe" : "Sans prefixe"}*`,
+          `┃★│ 📋 Commandes : *${commandsCount}*`,
+          "┃★╰──────────────",
+          "╰━━━━━━━━━━━━━━━┈⊷",
+          "",
+          "🚀 *Ton bot SIGMA MDX est actif !*",
+          ...accountLines,
+          "",
+          `🌐 Site officiel : ${SITE_LINK}`,
+          dashboardLink ? `🔐 Gérer ton bot : ${dashboardLink}` : null,
+          `📢 Chaîne officielle : ${CHANNEL_LINK}`,
+          "",
+          `💡 Tapez ${isPrefixMode ? BOT_CONFIG.PREFIXE_COMMANDE : ""}menu pour commencer`,
+          "",
+          "Merci d'avoir choisi SIGMA MDX ! 🌌"
+        ].filter(Boolean).join("\n");
+
+        try {
+          await Promise.race([
+            sock.sendMessage(ownerJid, {
+              image: { url: WELCOME_IMAGE },
+              caption: welcomeText
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("WELCOME_MEDIA_TIMEOUT")), 20000)
+            )
+          ]);
+        } catch (mediaErr) {
+          logger.warn(`Message de bienvenue: image non envoyée pour ${uuid}, fallback texte: ${mediaErr.message}`);
+          await sock.sendMessage(ownerJid, { text: welcomeText });
+        }
         logger.info(`🎉 Message de bienvenue envoyé au propriétaire du bot ${uuid}`);
       } catch (e) {
         logger.warn(`Message de bienvenue échoué pour ${uuid}: ${e.message}`);

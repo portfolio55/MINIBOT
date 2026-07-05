@@ -10,6 +10,8 @@ export const name = "menu";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const SITE_LINK = "https://sigmamdx.site";
+
 // Médias pour chaque mode (images, gifs et vidéos)
 const BOY_MEDIA = [
   "https://files.catbox.moe/bld2md.jpeg",
@@ -344,7 +346,16 @@ export async function execute(sock, msg, args, from, botContext) {
           remaining.delete(key);
         }
       }
-      if (items.length > 0) sections.push(buildSection(cat.title, items));
+      if (items.length > 0) {
+        sections.push(buildSection(cat.title, items));
+        if (cat.key === "download") {
+          sections.push(
+            isGirl
+              ? `      🌐 ⋆｡‧˚ ${SITE_LINK} ˚‧｡⋆`
+              : `   🌐 Héberge ton propre bot sur : ${SITE_LINK}`
+          );
+        }
+      }
     }
 
     const otherItems = [...remaining].sort((a, b) => a.localeCompare(b));

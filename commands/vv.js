@@ -2,6 +2,14 @@ import { downloadContentFromMessage } from "@whiskeysockets/baileys";
 
 export const name = "vv";
 
+const SITE_LINK = "https://sigmamdx.site";
+const vvFooter = () => [
+  "╭─────────────┈⊷",
+  "┃ 🔓 *Vue unique récupérée*",
+  `┃ 🌐 ${SITE_LINK}`,
+  "╰─────────────┈⊷"
+].join("\n");
+
 export async function execute(sock, msg, args) {
   const from = msg.key.remoteJid;
 
@@ -25,7 +33,7 @@ export async function execute(sock, msg, args) {
       const stream = await downloadContentFromMessage(innerMsg.imageMessage, "image");
       let buffer = Buffer.from([]);
       for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
-      await sock.sendMessage(from, { image: buffer });
+      await sock.sendMessage(from, { image: buffer, caption: vvFooter() });
       await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
       return;
     }
@@ -34,7 +42,7 @@ export async function execute(sock, msg, args) {
       const stream = await downloadContentFromMessage(innerMsg.videoMessage, "video");
       let buffer = Buffer.from([]);
       for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
-      await sock.sendMessage(from, { video: buffer });
+      await sock.sendMessage(from, { video: buffer, caption: vvFooter() });
       await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
       return;
     }
@@ -44,6 +52,7 @@ export async function execute(sock, msg, args) {
       let buffer = Buffer.from([]);
       for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
       await sock.sendMessage(from, { audio: buffer, mimetype: "audio/mpeg" });
+      await sock.sendMessage(from, { text: vvFooter() });
       await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
       return;
     }
