@@ -4,3 +4,4 @@
 - [Per-bot session file paths](per-bot-session-file-paths.md) — any per-bot feature that reads/writes a file (audio, media, config) must resolve the path via bot.sessionPath, never a hardcoded project-root path.
 - [MoneyFusion API quirks](moneyfusion-api-quirks.md) — real endpoint hostnames/paths differ from official docs; probe with curl before trusting a URL pattern.
 - [Silent command convention](silent-group-commands-convention.md) — success = ✅ reaction, error = plain text, never quote the command message; apply to new/edited commands.
+- [Interactive command reply interception](play-interactive-choice-pattern.md) — for prefix-less follow-up replies (e.g. "1"/"2" menus), intercept in botManager before prefix check, state owned by the command module.

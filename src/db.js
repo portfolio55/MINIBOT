@@ -175,6 +175,24 @@ export async function dbGetBotAccount(uuid) {
   return res.rows[0] || null;
 }
 
+// [ANTI-ABUS ESSAI 24H] Vérifie si un numéro a déjà consommé son essai gratuit,
+// même si le bot lié a été supprimé depuis (contrairement à bots.trial_used qui
+// disparaît avec la ligne lors d'une suppression).
+export async function dbHasPhoneUsedTrial(phoneNumber) {
+  const res = await query(
+    `SELECT 1 FROM trial_phone_history WHERE phone_number = $1`,
+    [phoneNumber]
+  );
+  return res.rows.length > 0;
+}
+
+export async function dbRecordTrialPhone(phoneNumber) {
+  await query(
+    `INSERT INTO trial_phone_history (phone_number) VALUES ($1) ON CONFLICT (phone_number) DO NOTHING`,
+    [phoneNumber]
+  );
+}
+
 export async function dbGetExpiredSubscriptions() {
   const res = await query(
     `SELECT uuid, phone_number AS "phoneNumber", status, subscription_expires_at AS "subscriptionExpiresAt"

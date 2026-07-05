@@ -229,6 +229,15 @@ async function ensureTables() {
   await query(`ALTER TABLE bots ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(20) DEFAULT 'trial'`);
   await query(`ALTER TABLE bots ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMPTZ`);
   await query(`ALTER TABLE bots ADD COLUMN IF NOT EXISTS trial_used BOOLEAN DEFAULT false`);
+  // [ANTI-ABUS ESSAI 24H] Historique des numéros ayant déjà consommé l'essai gratuit.
+  // Persiste même si le bot est supprimé, pour empêcher un même numéro de regénérer
+  // un essai gratuit en supprimant puis re-appairant son bot (nouveau uuid à chaque fois).
+  await query(`
+    CREATE TABLE IF NOT EXISTS trial_phone_history (
+      phone_number VARCHAR(30) PRIMARY KEY,
+      used_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
   await query(`
     CREATE TABLE IF NOT EXISTS payments (
       id SERIAL PRIMARY KEY,

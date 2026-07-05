@@ -23,7 +23,8 @@ import { initProtections } from "../protections.js";
 import { initProtections as initProtections2 } from "../protections2.js";
 import { createGroupManager } from "../groupManager.js";
 import { usePostgresAuthState, deleteAuthState, hasAuthState } from "./usePostgresAuthState.js";
-import { dbGetBotAccount, dbSetBotAccount } from "./db.js";
+import { dbGetBotAccount, dbSetBotAccount, dbHasPhoneUsedTrial, dbRecordTrialPhone } from "./db.js";
+import { handlePendingPlayReply } from "../commands/play.js";
 import { generateCredentials } from "./services/moneyfusion.js";
 import { SUBSCRIPTION_PLANS } from "./config.js";
 
@@ -953,25 +954,52 @@ class BotManager extends EventEmitter {
       if (account && !account.username) {
         const { username, password } = generateCredentials(ownerBare);
         const passwordHash = await bcrypt.hash(password, 10);
-        const trialMs = SUBSCRIPTION_PLANS.trial.durationMs;
-        await dbSetBotAccount(uuid, {
-          username,
-          passwordHash,
-          subscriptionPlan: "trial",
-          subscriptionExpiresAt: new Date(Date.now() + trialMs).toISOString(),
-          trialUsed: true,
-        });
-        accountLines = [
-          "",
-          "*🔑 TON COMPTE SIGMA MDX*",
-          `Identifiant: ${username}`,
-          `Mot de passe: ${password}`,
-          "",
-          "🎁 Essai gratuit de 24h activé !",
-          "Gère ton abonnement sur le site (page de connexion) avant expiration pour ne pas être déconnecté.",
-        ];
+
+        // [ANTI-ABUS ESSAI 24H] Ce numéro a-t-il déjà consommé un essai gratuit par le passé
+        // (même via un bot supprimé depuis) ? Si oui, on crée quand même le compte (pour
+        // permettre la connexion/paiement) mais SANS accorder un nouvel essai gratuit.
+        const alreadyUsedTrial = await dbHasPhoneUsedTrial(ownerBare);
+
+        if (alreadyUsedTrial) {
+          await dbSetBotAccount(uuid, {
+            username,
+            passwordHash,
+            subscriptionPlan: "trial",
+            subscriptionExpiresAt: new Date(Date.now() - 1000).toISOString(),
+            trialUsed: true,
+          });
+          accountLines = [
+            "",
+            "*🔑 TON COMPTE SIGMA MDX*",
+            `Identifiant: ${username}`,
+            `Mot de passe: ${password}`,
+            "",
+            "⚠️ Ce numéro a déjà utilisé l'essai gratuit de 24h.",
+            "Choisis un abonnement sur le site (page de connexion) pour activer ton bot.",
+          ];
+          logger.info(`🚫 Essai gratuit refusé (déjà utilisé) pour bot ${uuid} (numéro: ${ownerBare})`);
+        } else {
+          const trialMs = SUBSCRIPTION_PLANS.trial.durationMs;
+          await dbSetBotAccount(uuid, {
+            username,
+            passwordHash,
+            subscriptionPlan: "trial",
+            subscriptionExpiresAt: new Date(Date.now() + trialMs).toISOString(),
+            trialUsed: true,
+          });
+          await dbRecordTrialPhone(ownerBare);
+          accountLines = [
+            "",
+            "*🔑 TON COMPTE SIGMA MDX*",
+            `Identifiant: ${username}`,
+            `Mot de passe: ${password}`,
+            "",
+            "🎁 Essai gratuit de 24h activé !",
+            "Gère ton abonnement sur le site (page de connexion) avant expiration pour ne pas être déconnecté.",
+          ];
+          logger.info(`🔑 Compte web créé pour bot ${uuid} (username: ${username})`);
+        }
         newAccountCreated = true;
-        logger.info(`🔑 Compte web créé pour bot ${uuid} (username: ${username})`);
       }
     } catch (e) {
       logger.error(`Erreur création compte web pour ${uuid}: ${e.message}`);
@@ -1104,6 +1132,17 @@ class BotManager extends EventEmitter {
     // [OPTIMISÉ] Extraire le texte EN PREMIER pour rejeter rapidement les non-commandes
     const text = pickText(unwrapMessage(msg.message));
     if (!text) return;
+
+    // [PLAY INTERACTIF] Si un choix audio/vidéo est en attente pour cet expéditeur,
+    // intercepter la réponse "1"/"2" AVANT le routage normal des commandes (pas de préfixe requis).
+    if (!msg.key.fromMe && /^[12]$/.test(text.trim())) {
+      try {
+        const handled = await handlePendingPlayReply(uuid, from, sender, text);
+        if (handled) return;
+      } catch (e) {
+        logger.error(`Erreur handlePendingPlayReply: ${e.message}`);
+      }
+    }
 
     // [OPTIMISÉ] Charger la config et les settings en parallèle (pas séquentiellement)
     const configFiles = await loadBotConfig(bot.sessionPath);

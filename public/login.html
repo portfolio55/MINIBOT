@@ -105,6 +105,7 @@
             background: rgba(255,95,86,0.08);
         }
         .alert.show { display: block; }
+        .alert.info { border-color: var(--accent-dim); color: var(--accent); background: rgba(57,211,83,0.08); }
         .hint {
             text-align: center;
             margin-top: 18px;
@@ -137,6 +138,7 @@
             <p class="subtitle">accède à ton compte sigma-mdx</p>
 
             <div class="alert" id="alert"></div>
+            <div class="alert info" id="pairedAlert">✅ ton bot est connecté ! utilise les identifiants reçus sur WhatsApp pour te connecter ci-dessous.</div>
 
             <form id="loginForm">
                 <label for="username">identifiant</label>
@@ -156,9 +158,16 @@
     <script>
         const form = document.getElementById('loginForm');
         const alertDiv = document.getElementById('alert');
+        const pairedAlert = document.getElementById('pairedAlert');
         const btn = document.getElementById('btnLogin');
 
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('reason') === 'paired') {
+            pairedAlert.classList.add('show');
+        }
+
         function showError(message) {
+            pairedAlert.classList.remove('show');
             alertDiv.textContent = message;
             alertDiv.classList.add('show');
         }

@@ -915,15 +915,10 @@
 
                     socket.on('pairing-success', function(data) {
                         if (data.uuid === currentUUID) {
-                            showStatus('connexion réussie, redirection...', 'success');
+                            showStatus('connexion réussie ! tes identifiants de connexion arrivent sur WhatsApp, redirection...', 'success');
                             setTimeout(function() {
-                                var token = currentToken || localStorage.getItem(STORAGE_TOKEN_KEY);
-                                if (token) {
-                                    window.location.href = '/dashboard/' + token;
-                                } else {
-                                    showStatus('connexion ok mais token introuvable. relance le pairing.', 'error');
-                                }
-                            }, 2000);
+                                window.location.href = '/login.html?reason=paired';
+                            }, 2500);
                         }
                     });
 

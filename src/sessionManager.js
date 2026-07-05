@@ -57,7 +57,9 @@ export function generateUUID() {
 }
 
 export function generateToken() {
-  return crypto.randomBytes(32).toString("hex");
+  // [RACCOURCI] 8 octets = 16 caractères hex (au lieu de 64) — plus facile à lire/copier,
+  // toujours protégé par le rate-limiting sur les routes /api/bot/:token/*.
+  return crypto.randomBytes(8).toString("hex");
 }
 
 export async function loadBots() {

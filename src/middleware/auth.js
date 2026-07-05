@@ -145,8 +145,9 @@ export function validateTokenFormat(req, res, next) {
     return res.status(400).json({ error: "Token requis" });
   }
 
-  // Le token doit être exactement 64 caractères hexadécimaux
-  if (!/^[a-f0-9]{64}$/i.test(token)) {
+  // Le token doit être hexadécimal, entre 16 et 64 caractères
+  // (16 = nouveau format raccourci, 64 = anciens tokens déjà émis, gardés valides)
+  if (!/^[a-f0-9]{16,64}$/i.test(token)) {
     return res.status(400).json({ error: "Format de token invalide" });
   }
 
