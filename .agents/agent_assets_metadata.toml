@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "Bd1fvHpiO4Owr2TMkEhHw"
+uri = "file://attached_assets/generated_images/sigma_icon.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "y6pOlTc6wIN8ySy7TZyuK"
+uri = "file://attached_assets/generated_images/sigma_og_banner.png"
+type = "image"
+title = "generated_image"
