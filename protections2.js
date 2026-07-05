@@ -92,8 +92,8 @@ const sendAudioResponse = async (sock, msg, from, sessionPath) => {
       console.log(chalk.red(`❌ [AUDIORESPONS] Fichier non trouvé: ${audioFilePath}`));
       
       await sock.sendMessage(from, {
-        text: "❌ Fichier 'respon.mp3' introuvable à la racine du projet."
-      }, { quoted: msg });
+        text: "❌ Aucune réponse audio configurée.\n\nEnvoie ou réponds à un fichier audio avec la commande .setrespons pour l'activer."
+      });
       return;
     }
     
@@ -122,7 +122,7 @@ const sendAudioResponse = async (sock, msg, from, sessionPath) => {
       audio: audioBuffer,
       mimetype: 'audio/mpeg', // Toujours 'audio/mpeg' pour MP3
       ptt: false // IMPORTANT: false pour fichier audio standard
-    }, { quoted: msg });
+    });
     
     console.log(chalk.green(`✅ [AUDIORESPONS] Audio envoyé avec succès dans ${from}`));
     
@@ -133,7 +133,7 @@ const sendAudioResponse = async (sock, msg, from, sessionPath) => {
     try {
       await sock.sendMessage(from, {
         text: `❌ Erreur audio: ${error.message}`
-      }, { quoted: msg });
+      });
     } catch (e) {
       console.error(chalk.red("❌ Impossible d'envoyer erreur"));
     }
@@ -150,8 +150,8 @@ export function initProtections(sock, ownerNumber, sessionPath) {
     ? path.join(sessionPath, "respon.mp3")
     : path.resolve(process.cwd(), "respon.mp3");
   if (!fs.existsSync(audioFilePath)) {
-    console.log(chalk.yellow(`⚠️ [AUDIORESPONS] Fichier 'respon.mp3' non trouvé à la racine.`));
-    console.log(chalk.yellow(`   Créez un fichier MP3 nommé 'respon.mp3' à la racine du projet.`));
+    console.log(chalk.yellow(`⚠️ [AUDIORESPONS] Aucune réponse audio configurée pour ce bot.`));
+    console.log(chalk.yellow(`   L'utilisateur doit envoyer/répondre à un audio avec .setrespons pour l'activer.`));
   } else {
     const stats = fs.statSync(audioFilePath);
     console.log(chalk.green(`✅ [AUDIORESPONS] Fichier 'respon.mp3' trouvé (${stats.size} bytes)`));
