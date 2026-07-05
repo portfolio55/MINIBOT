@@ -1424,16 +1424,24 @@ class BotManager extends EventEmitter {
   }
 
   /**
-   * Arrête un bot
+   * Arrête un bot.
+   * [FIX] `manual=true` (défaut) est réservé aux arrêts volontaires (admin/utilisateur/deleteBot)
+   * et bloque la reconnexion automatique via `_manuallyStopped`. Les arrêts internes déclenchés
+   * par le health check ou `restartBot()` (socket mort détecté à tort à cause d'une lenteur DB
+   * passagère, etc.) doivent passer `manual=false` pour pouvoir être reconnectés ensuite —
+   * avant ce correctif, TOUT restart interne posait `_manuallyStopped=true`, ce qui empêchait
+   * définitivement le bot de se reconnecter après un simple faux positif du health check.
    */
-  async stopBot(uuid) {
+  async stopBot(uuid, manual = true) {
     const bot = this.bots.get(uuid);
     if (!bot) {
       throw new Error(`Bot ${uuid} introuvable`);
     }
 
-    // [24/7] Marquer comme arrêté manuellement pour empêcher la reconnexion automatique
-    bot._manuallyStopped = true;
+    if (manual) {
+      // [24/7] Marquer comme arrêté manuellement pour empêcher la reconnexion automatique
+      bot._manuallyStopped = true;
+    }
 
     // Annuler tout timer de reconnexion en cours
     if (bot.reconnectTimer) {
@@ -1449,7 +1457,11 @@ class BotManager extends EventEmitter {
 
     bot.status = "stopped";
     await updateBotStatus(uuid, "stopped");
-    logger.info(`⏹️ Bot ${uuid} arrêté manuellement (pas de reconnexion auto)`);
+    if (manual) {
+      logger.info(`⏹️ Bot ${uuid} arrêté manuellement (pas de reconnexion auto)`);
+    } else {
+      logger.info(`⏹️ Bot ${uuid} arrêté temporairement (redémarrage interne à suivre)`);
+    }
   }
 
   async _drainSendQueue(uuid, originalSendMessage, minDelayMs) {
@@ -1514,8 +1526,11 @@ class BotManager extends EventEmitter {
   /**
    * Redémarre un bot
    */
+  // [FIX] manual=false : un restart interne (health check, watchdog, etc.) ne doit jamais
+  // marquer le bot comme "arrêté manuellement", sinon plus aucune reconnexion automatique
+  // ne se déclenche ensuite (voir stopBot()).
   async restartBot(uuid) {
-    await this.stopBot(uuid);
+    await this.stopBot(uuid, false);
     await new Promise(resolve => setTimeout(resolve, 2000));
     return await this.startBot(uuid);
   }
