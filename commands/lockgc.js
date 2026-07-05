@@ -9,12 +9,12 @@ export async function execute(sock, msg, args, from) {
     const sender = msg.key.participant || from;
     const isAdmin = meta.participants.find(p => p.id === sender)?.admin;
     if (!isAdmin) {
-      return await sock.sendMessage(from, { text: "❌ Seuls les admins peuvent verrouiller le groupe." }, { quoted: msg });
+      return await sock.sendMessage(from, { text: "❌ Seuls les admins peuvent verrouiller le groupe." });
     }
     await sock.groupSettingUpdate(from, "locked");
-    await sock.sendMessage(from, { text: "🔒 Groupe verrouillé. Les nouveaux membres ne peuvent plus rejoindre." }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
   } catch (e) {
     console.error("Erreur lockgc:", e);
-    await sock.sendMessage(from, { text: "❌ Impossible de verrouiller." }, { quoted: msg });
+    await sock.sendMessage(from, { text: "❌ Impossible de verrouiller." });
   }
 }

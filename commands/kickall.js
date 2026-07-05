@@ -4,9 +4,6 @@ export async function execute(sock, msg, args) {
   const groupJid = msg.key.remoteJid;
 
   try {
-    // Message de démarrage
-    await sock.sendMessage(groupJid, { text: "> SIGMA MDX DEPLOY :Démarrage de l'expulsion de tous les membres non-admin..." });
-
     let attempts = 0;
     const maxAttempts = 200; // Sécurité anti-boucle infinie
 
@@ -17,7 +14,7 @@ export async function execute(sock, msg, args) {
       const nonAdmins = participants.filter(p => !p.admin);
 
       if (nonAdmins.length === 0) {
-        await sock.sendMessage(groupJid, { text: "> SIGMA MDX DEPLOY :Tous les membres non-admin ont été expulsés avec succés." });
+        await sock.sendMessage(groupJid, { react: { text: "✅", key: msg.key } });
         return;
       }
 
@@ -35,10 +32,10 @@ export async function execute(sock, msg, args) {
     }
 
     // Si on atteint la limite
-    await sock.sendMessage(groupJid, { text: "> SIGMA MDX DEPLOY :Limite de tentatives atteinte. Arrét du processus." });
+    await sock.sendMessage(groupJid, { text: "> SIGMA MDX DEPLOY : Limite de tentatives atteinte. Arrét du processus." });
 
   } catch (err) {
     console.error("Erreur critique dans kickall :", err);
-    await sock.sendMessage(groupJid, { text: "> SIGMA MDX DEPLOY :Une erreur est survenue lors de l'exécution." });
+    await sock.sendMessage(groupJid, { text: "> SIGMA MDX DEPLOY : Une erreur est survenue lors de l'exécution." });
   }
 }

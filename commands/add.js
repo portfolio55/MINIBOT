@@ -52,11 +52,7 @@ export async function execute(sock, msg, args) {
 
     await sock.groupParticipantsUpdate(from, [number], "add");
 
-    await sock.sendMessage(from, {
-
-      text: `> SIGMA MDX DEPLOY: ? L'utilisateur ${args[0]} a été ajouté au groupe.`
-
-    });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (e) {
 

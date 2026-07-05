@@ -36,19 +36,13 @@ export async function execute(sock, msg, args) {
 
     await sock.groupParticipantsUpdate(from, [target], "demote");
 
-    await sock.sendMessage(from, {
-
-      text: `> SIGMA MDX DEPLOY: ? @${target.split("@")[0]} n'est plus admin.`,
-
-      mentions: [target],
-
-    });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (err) {
 
     console.error("? Erreur demote :", err);
 
-    await sock.sendMessage(msg.key.remoteJid, { text: "> SIGMA MDX DEPLOY: ? Une erreur est survenue." }, { quoted: msg });
+    await sock.sendMessage(msg.key.remoteJid, { text: "> SIGMA MDX DEPLOY: ? Une erreur est survenue." });
 
   }
 

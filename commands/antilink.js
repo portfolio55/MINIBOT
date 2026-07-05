@@ -16,7 +16,7 @@ export async function execute(sock, msg, args, from, botContext) {
 
     if (!from.endsWith("@g.us")) {
 
-      await sock.sendMessage(from, { text: "Cette commande est réservée aux groupes." }, { quoted: msg });
+      await sock.sendMessage(from, { text: "Cette commande est réservée aux groupes." });
 
       return;
 
@@ -38,7 +38,7 @@ export async function execute(sock, msg, args, from, botContext) {
 
     if (!isOwner && !isSudo && !isAdmin) {
 
-      await sock.sendMessage(from, { text: "Accès refusé. Admin, owner ou sudo requis." }, { quoted: msg });
+      await sock.sendMessage(from, { text: "Accès refusé. Admin, owner ou sudo requis." });
 
       return;
 
@@ -54,7 +54,7 @@ export async function execute(sock, msg, args, from, botContext) {
 
         text: `> SIGMA MDX DEPLOY: Anti-Link\n\nétat : ${current}\n\nUtilisation : \`!antilink on\` ou \`!antilink off\``
 
-      }, { quoted: msg });
+      });
 
       return;
 
@@ -64,17 +64,13 @@ export async function execute(sock, msg, args, from, botContext) {
 
     _setGP(from, "antiLink", newState);
 
-    await sock.sendMessage(from, { 
-
-      text: `> SIGMA MDX DEPLOY: Anti-Link ${newState ? "activé" : "désactivé"} dans ce groupe.`
-
-    }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (err) {
 
     console.error("Erreur antilink:", err);
 
-    await sock.sendMessage(from, { text: "Une erreur est survenue." }, { quoted: msg });
+    await sock.sendMessage(from, { text: "Une erreur est survenue." });
 
   }
 

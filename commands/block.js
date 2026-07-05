@@ -31,23 +31,20 @@ export async function execute(sock, msg, args) {
             "é Mention: .block @user\n" +
             "é Reply: .block (to a message)\n" +
             "é Number: .block 1234567890" 
-    }, { quoted: msg });
+    });
   }
 
   try {
     // Blocage de l'utilisateur
     await sock.updateBlockStatus(targetUser, 'block');
     
-    await sock.sendMessage(from, { 
-      text: `? *SIGMA MDX DEPLOY*: User blocked successfully\n` +
-            `User: ${targetUser.split('@')[0]}`
-    }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (err) {
     console.error("Block command error:", err);
     await sock.sendMessage(from, { 
       text: `? *SIGMA MDX DEPLOY*: Failed to block user\n` +
             `Error: ${err.message || 'Unknown error'}`
-    }, { quoted: msg });
+    });
   }
 }

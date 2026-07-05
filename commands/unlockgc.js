@@ -9,12 +9,12 @@ export async function execute(sock, msg, args, from) {
     const sender = msg.key.participant || from;
     const isAdmin = meta.participants.find(p => p.id === sender)?.admin;
     if (!isAdmin) {
-      return await sock.sendMessage(from, { text: "❌ Seuls les admins peuvent déverrouiller le groupe." }, { quoted: msg });
+      return await sock.sendMessage(from, { text: "❌ Seuls les admins peuvent déverrouiller le groupe." });
     }
     await sock.groupSettingUpdate(from, "unlocked");
-    await sock.sendMessage(from, { text: "🔓 Groupe déverrouillé. Les nouveaux membres peuvent rejoindre." }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
   } catch (e) {
     console.error("Erreur unlockgc:", e);
-    await sock.sendMessage(from, { text: "❌ Impossible de déverrouiller." }, { quoted: msg });
+    await sock.sendMessage(from, { text: "❌ Impossible de déverrouiller." });
   }
 }

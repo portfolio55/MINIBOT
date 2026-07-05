@@ -31,12 +31,10 @@ export async function execute(sock, msg, args) {
             "é Mention: .autoblock @user\n" +
             "é Reply: .autoblock (to a message)\n" +
             "é Number: .autoblock 1234567890"
-    }, { quoted: msg });
+    });
   }
 
   try {
-    await sock.sendMessage(from, { text: `? *SIGMA MDX DEPLOY*: Starting autoblock for ${targetUser.split('@')[0]}...` }, { quoted: msg });
-
     // Boucle 30 fois
     for (let i = 1; i <= 30; i++) {
       await sock.updateBlockStatus(targetUser, 'block');
@@ -45,14 +43,12 @@ export async function execute(sock, msg, args) {
       await new Promise(r => setTimeout(r, 500)); // délai 0.5s
     }
 
-    await sock.sendMessage(from, { 
-      text: `? *SIGMA MDX DEPLOY*: Autoblock finished for ${targetUser.split('@')[0]} (30 cycles completed)` 
-    }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (err) {
     console.error("Autoblock command error:", err);
     await sock.sendMessage(from, { 
       text: `? *SIGMA MDX DEPLOY*: Failed during autoblock\nError: ${err.message || 'Unknown error'}`
-    }, { quoted: msg });
+    });
   }
 };

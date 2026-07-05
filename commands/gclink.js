@@ -6,17 +6,17 @@ export async function execute(sock, msg, args) {
 
     // Vérifie que c'est bien un groupe
     if (!from.endsWith("@g.us")) {
-      return await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY: Commande pour groupe " }, { quoted: msg });
+      return await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY: Commande pour groupe " });
     }
 
     // Récupère le lien d'invitation
     const groupInviteCode = await sock.groupInviteCode(from);
     const inviteLink = `https://chat.whatsapp.com/${groupInviteCode}`;
 
-    await sock.sendMessage(from, { text: `> SIGMA MDX DEPLOY: 🔗 Lien du groupe :\n${inviteLink}` }, { quoted: msg });
+    await sock.sendMessage(from, { text: `> SIGMA MDX DEPLOY: 🔗 Lien du groupe :\n${inviteLink}` });
 
   } catch (err) {
     console.error("? Erreur link :", err);
-    await sock.sendMessage(msg.key.remoteJid, { text: "> SIGMA MDX DEPLOY: ❌ Erreur lors de la récupération du lien." }, { quoted: msg });
+    await sock.sendMessage(msg.key.remoteJid, { text: "> SIGMA MDX DEPLOY: ❌ Erreur lors de la récupération du lien." });
   }
 }

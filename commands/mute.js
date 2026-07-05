@@ -12,9 +12,9 @@ export async function execute(sock, msg, args) {
   try {
     // Mettre le groupe en mode admin uniquement (fermé)
     await sock.groupSettingUpdate(from, "announcement"); // "announcement" = seuls les admins peuvent envoyer des messages
-    await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY : Groupe fermé!" }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
   } catch (err) {
     console.error("Erreur lors de la fermeture du groupe :", err);
-    await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY : Impossible de fermer le groupe. Assurez-vous que vous étes admin." }, { quoted: msg });
+    await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY : Impossible de fermer le groupe. Assurez-vous que vous étes admin." });
   }
 }

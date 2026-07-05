@@ -18,7 +18,7 @@ export async function execute(sock, msg, args, from, botContext) {
 
     if (!from.endsWith("@g.us")) {
 
-      await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY: Cette commande est réservée aux groupes." }, { quoted: msg });
+      await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY: Cette commande est réservée aux groupes." });
 
       return;
 
@@ -44,7 +44,7 @@ export async function execute(sock, msg, args, from, botContext) {
 
     if (!isOwner && !isSudo && !isAdmin) {
 
-      await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY: Accès refusé. Admin, owner ou sudo requis." }, { quoted: msg });
+      await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY: Accès refusé. Admin, owner ou sudo requis." });
 
       return;
 
@@ -62,7 +62,7 @@ export async function execute(sock, msg, args, from, botContext) {
 
         text: `> SIGMA MDX DEPLOY: Welcome Message\n\nétat : ${current}\n\nUtilisation : \`!welcome on\` ou \`!welcome off\``
 
-      }, { quoted: msg });
+      });
 
       return;
 
@@ -74,17 +74,13 @@ export async function execute(sock, msg, args, from, botContext) {
 
     _setGP(from, "welcome", newState);
 
-    await sock.sendMessage(from, { 
-
-      text: `> SIGMA MDX DEPLOY: Welcome Message ${newState ? "activé" : "désactivé"} dans ce groupe.`
-
-    }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (err) {
 
     console.error("Erreur welcome:", err);
 
-    await sock.sendMessage(from, { text: "Une erreur est survenue." }, { quoted: msg });
+    await sock.sendMessage(from, { text: "Une erreur est survenue." });
 
   }
 

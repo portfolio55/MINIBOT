@@ -64,21 +64,7 @@ export async function execute(sock, msg, args) {
 
     const remainingCount = updatedGroup.participants.length;
 
-    // Message de confirmation stylisé
-
-    const mentionsText = targets.map(jid => `👤 @${jid.split("@")[0]} ✅`).join("\n");
-
-    const confirmationText = `> SIGMA MDX DEPLOY:
-> 🚫 Membres expulsés :${mentionsText}
-> 👥 Membres restants : ${remainingCount}`;
-
-    await sock.sendMessage(from, { 
-
-      text: confirmationText,
-
-      mentions: targets
-
-    });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (err) {
 
@@ -88,7 +74,7 @@ export async function execute(sock, msg, args) {
 
       text: "> SIGMA MDX DEPLOY: ? Suppression Impossible."
 
-    }, { quoted: msg });
+    });
 
   }
 

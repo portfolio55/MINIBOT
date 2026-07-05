@@ -11,7 +11,7 @@ export async function execute(sock, msg, args, from, botContext) {
     const { getGroupProtections: _getGP, setGroupProtection: _setGP } = botContext?.groupManager || createGroupManager(botContext?.sessionPath);
     // === GROUPE UNIQUEMENT ===
     if (!from.endsWith("@g.us")) {
-      await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY: Cette commande est réservée aux groupes." }, { quoted: msg });
+      await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY: Cette commande est réservée aux groupes." });
       return;
     }
 
@@ -27,7 +27,7 @@ export async function execute(sock, msg, args, from, botContext) {
     const isAdmin = await isGroupAdmin(sock, from, sender);
 
     if (!isOwner && !isSudo && !isAdmin) {
-      await sock.sendMessage(from, { text: "Accès refusé. Admin, owner ou sudo requis." }, { quoted: msg });
+      await sock.sendMessage(from, { text: "Accès refusé. Admin, owner ou sudo requis." });
       return;
     }
 
@@ -38,7 +38,7 @@ export async function execute(sock, msg, args, from, botContext) {
       const current = _getGP(from).goodbye ? "activé" : "désactivé";
       await sock.sendMessage(from, { 
         text: `> SIGMA MDX DEPLOY: Goodbye Message\n\nétat : ${current}\n\nUtilisation : \`!goodbye on\` ou \`!goodbye off\``
-      }, { quoted: msg });
+      });
       return;
     }
 
@@ -46,13 +46,11 @@ export async function execute(sock, msg, args, from, botContext) {
     const newState = arg === "on";
     _setGP(from, "goodbye", newState);
 
-    await sock.sendMessage(from, { 
-      text: `> SIGMA MDX DEPLOY: Goodbye Message ${newState ? "activé" : "désactivé"} dans ce groupe.`
-    }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (err) {
     console.error("Erreur goodbye:", err);
-    await sock.sendMessage(from, { text: "Une erreur est survenue." }, { quoted: msg });
+    await sock.sendMessage(from, { text: "Une erreur est survenue." });
   }
 }
 

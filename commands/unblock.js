@@ -31,23 +31,20 @@ export async function execute(sock, msg, args) {
             "é Mention: .unblock @user\n" +
             "é Reply: .unblock (to a message)\n" +
             "é Number: .unblock 1234567890" 
-    }, { quoted: msg });
+    });
   }
 
   try {
     // Déblocage de l'utilisateur
     await sock.updateBlockStatus(targetUser, 'unblock');
     
-    await sock.sendMessage(from, { 
-      text: `? *SIGMA MDX DEPLOY*: User unblocked successfully\n` +
-            `User: ${targetUser.split('@')[0]}`
-    }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (err) {
     console.error("Unblock command error:", err);
     await sock.sendMessage(from, { 
       text: `? *SIGMA MDX DEPLOY*: Failed to unblock user\n` +
             `Error: ${err.message || 'Unknown error'}`
-    }, { quoted: msg });
+    });
   }
 }

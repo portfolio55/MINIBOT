@@ -10,7 +10,7 @@ export async function execute(sock, msg, args) {
   if (!from.endsWith("@g.us")) {
     return await sock.sendMessage(from, {
       text: "> SIGMA MDX DEPLOY: ⚙️ Commande réservée aux groupes seulement."
-    }, { quoted: msg });
+    });
   }
 
   try {
@@ -31,7 +31,7 @@ export async function execute(sock, msg, args) {
       console.error("⚡ Le numéro du propriétaire (NUMBER) n'est pas défini dans .env !");
       return await sock.sendMessage(from, {
         text: "> SIGMA MDX DEPLOY: ?? Le numéro du propriétaire n'est pas configuré."
-      }, { quoted: msg });
+      });
     }
 
     // --- Fonction utilitaire pour vérifier si admin ---
@@ -52,21 +52,18 @@ export async function execute(sock, msg, args) {
     if (toPromote.length === 0) {
       return await sock.sendMessage(from, {
         text: "> SIGMA MDX DEPLOY: ? Tous les membres sont déjà administrateurs"
-      }, { quoted: msg });
+      });
     }
 
     // --- Promotion des membres ---
     await sock.groupParticipantsUpdate(from, toPromote, "promote");
 
-    await sock.sendMessage(from, {
-      text: `⚡ *${toPromote.length} membre(s) promu(s) administrateur(s).* (Bot et propriétaire exclus)`,
-      mentions: toPromote
-    }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (err) {
     console.error("? Erreur promoteall :", err);
     await sock.sendMessage(from, {
       text: "? *Erreur lors de l'exécution de promoteall.* Vérifie mes permissions ou réessaye."
-    }, { quoted: msg });
+    });
   }
 }

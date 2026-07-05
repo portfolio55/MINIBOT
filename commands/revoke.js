@@ -9,12 +9,12 @@ export async function execute(sock, msg, args, from) {
     const sender = msg.key.participant || from;
     const isAdmin = meta.participants.find(p => p.id === sender)?.admin;
     if (!isAdmin) {
-      return await sock.sendMessage(from, { text: "❌ Seuls les admins peuvent révoquer le lien." }, { quoted: msg });
+      return await sock.sendMessage(from, { text: "❌ Seuls les admins peuvent révoquer le lien." });
     }
     await sock.groupRevokeInvite(from);
-    await sock.sendMessage(from, { text: "⛔ Lien d’invitation du groupe révoqué (nouveau lien généré)." }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
   } catch (e) {
     console.error("Erreur revoke:", e);
-    await sock.sendMessage(from, { text: "❌ Impossible de révoquer le lien." }, { quoted: msg });
+    await sock.sendMessage(from, { text: "❌ Impossible de révoquer le lien." });
   }
 }

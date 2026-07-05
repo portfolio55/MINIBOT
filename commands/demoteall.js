@@ -10,7 +10,7 @@ export async function execute(sock, msg, args) {
   if (!from.endsWith("@g.us")) {
     return await sock.sendMessage(from, {
       text: "⚡ *Commande réservée aux groupes seulement.*"
-    }, { quoted: msg });
+    });
   }
 
   try {
@@ -32,7 +32,7 @@ export async function execute(sock, msg, args) {
       console.error("⚡ Le numéro du propriétaire (NUMBER) n'est pas défini dans .env !");
       return await sock.sendMessage(from, {
         text: "> SIGMA MDX DEPLOY: ?? Le numéro du propriétaire n'est pas configuré."
-      }, { quoted: msg });
+      });
     }
 
     // --- Fonction utilitaire pour détecter les admins ---
@@ -53,22 +53,19 @@ export async function execute(sock, msg, args) {
     if (toDemote.length === 0) {
       return await sock.sendMessage(from, {
         text: "> SIGMA MDX DEPLOY: ? Aucun admin é rétrograder"
-      }, { quoted: msg });
+      });
     }
 
     // --- Exécution du demote ---
     await sock.groupParticipantsUpdate(from, toDemote, "demote");
 
     // --- Confirmation ---
-    await sock.sendMessage(from, {
-      text: `> SIGMA MDX DEPLOY: ?? *${toDemote.length} admin(s) rétrogradé(s).* (Bot, propriétaire et auteur exclus)`,
-      mentions: toDemote
-    }, { quoted: msg });
+    await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   } catch (err) {
     console.error("? Erreur demoteall :", err);
     await sock.sendMessage(from, {
       text: "? *Erreur lors de l'exécution de demoteall.* Vérifie mes permissions ou réessaye."
-    }, { quoted: msg });
+    });
   }
 }

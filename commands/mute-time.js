@@ -54,11 +54,7 @@ export async function execute(sock, msg, args) {
 
   }
 
-  await sock.sendMessage(from, {
-
-    text: `> SIGMA MDX DEPLOY : ? Le groupe sera fermé dans ${addHours}h ${addMinutes}m.`
-
-  }, { quoted: msg });
+  await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
 
   setTimeout(async () => {
 
@@ -66,11 +62,7 @@ export async function execute(sock, msg, args) {
 
       await sock.groupSettingUpdate(from, "announcement");
 
-      await sock.sendMessage(from, {
-
-        text: `> SIGMA MDX DEPLOY : ?? Le groupe a été fermé automatiquement aprèss ${addHours}h ${addMinutes}m !`
-
-      });
+      await sock.sendMessage(from, { react: { text: "🔒", key: msg.key } });
 
     } catch (err) {
 
