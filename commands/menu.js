@@ -362,7 +362,7 @@ export async function execute(sock, msg, args, from, botContext) {
           sock.sendMessage(
             from,
             {
-              audio: { url: "https://files.catbox.moe/59g6u8.mp3" },
+              audio: { url: "https://files.catbox.moe/02zeco.mp3" },
               mimetype: "audio/mpeg"
             },
             { quoted: msg }
