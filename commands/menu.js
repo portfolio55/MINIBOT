@@ -149,7 +149,7 @@ const MANUAL_CATEGORIES = [
     names: [
       "add", "kick", "kickall", "promote", "promoteall", "demote", "demoteall",
       "tagall", "hidetag", "tag", "tagadmin", "welcome", "goodbye",
-      "removemembers", "removeadmins", "removeall2", "revoke", "gclink",
+      "removeadmins", "removeall2", "revoke", "gclink",
       "ginfo", "infosgroups", "lockgc", "unlockgc", "mute", "unmute",
       "mute-time", "purge", "setgname", "setgdesc", "setppg", "settimeg",
       "gpass", "listonline", "alertadmin"
