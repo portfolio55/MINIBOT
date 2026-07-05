@@ -140,6 +140,34 @@ const sendAudioResponse = async (sock, msg, from, sessionPath) => {
   }
 };
 
+// =================== PERSISTANCE DE L'ÉTAT ACTIF/INACTIF ===================
+// [FIX] L'état était gardé uniquement en mémoire (fermeture de fonction), donc chaque
+// reconnexion du bot (health check, recovery sweep, coupure réseau...) appelait
+// initProtections() à nouveau et remettait isResponsActive à false silencieusement.
+// On persiste désormais l'état sur disque pour qu'il survive aux reconnexions.
+const getResponsStateFile = (sessionPath) =>
+  sessionPath ? path.join(sessionPath, "audiorespons.json") : path.resolve(process.cwd(), "audiorespons.json");
+
+const loadResponsActiveState = (sessionPath) => {
+  try {
+    const file = getResponsStateFile(sessionPath);
+    if (!fs.existsSync(file)) return false;
+    const data = JSON.parse(fs.readFileSync(file, "utf-8"));
+    return !!data.active;
+  } catch (e) {
+    console.error(chalk.red("❌ [AUDIORESPONS] Erreur lecture état persistant:"), e.message);
+    return false;
+  }
+};
+
+const saveResponsActiveState = (sessionPath, active) => {
+  try {
+    fs.writeFileSync(getResponsStateFile(sessionPath), JSON.stringify({ active: !!active }, null, 2));
+  } catch (e) {
+    console.error(chalk.red("❌ [AUDIORESPONS] Erreur sauvegarde état persistant:"), e.message);
+  }
+};
+
 // =================== FONCTION D'INITIALISATION ===================
 export function initProtections(sock, ownerNumber, sessionPath) {
   const botUuid = sessionPath ? path.basename(sessionPath).replace("bot_", "") : "global";
@@ -157,8 +185,9 @@ export function initProtections(sock, ownerNumber, sessionPath) {
     console.log(chalk.green(`✅ [AUDIORESPONS] Fichier 'respon.mp3' trouvé (${stats.size} bytes)`));
   }
   
-  // Système DÉSACTIVÉ par défaut (sera activé par la commande .audiorespons on)
-  let isResponsActive = false;
+  // [FIX] Restaurer l'état persisté au lieu de toujours repartir à false après une reconnexion
+  let isResponsActive = loadResponsActiveState(sessionPath);
+  console.log(chalk.cyan(`[AUDIORESPONS] État restauré: ${isResponsActive ? "ACTIF" : "INACTIF"}`));
   
   // Stocker la référence du sock pour l'utiliser partout
   let globalSock = sock;
@@ -199,12 +228,14 @@ export function initProtections(sock, ownerNumber, sessionPath) {
   // === FONCTIONS DE CONTRÔLE POUR LA COMMANDE AUDIORESPONS ===
   const toggleRespons = () => {
     isResponsActive = !isResponsActive;
+    saveResponsActiveState(sessionPath, isResponsActive);
     console.log(chalk.yellow(`[AUDIORESPONS] ${isResponsActive ? 'ACTIVÉ dans tous les groupes' : 'DÉSACTIVÉ'}`));
     return isResponsActive;
   };
   
   const setResponsStatus = (status) => {
     isResponsActive = Boolean(status);
+    saveResponsActiveState(sessionPath, isResponsActive);
     console.log(chalk.yellow(`[AUDIORESPONS] ${isResponsActive ? 'ACTIVÉ dans tous les groupes' : 'DÉSACTIVÉ'}`));
     return isResponsActive;
   };
@@ -215,9 +246,11 @@ export function initProtections(sock, ownerNumber, sessionPath) {
     setStatus: setResponsStatus,
     status: () => ({
       active: isResponsActive,
-      ownerLid: getOwnerLid(),
-      audioFile: fs.existsSync(audioFilePath) ? 
-        `${path.basename(audioFilePath)} (${fs.statSync(audioFilePath).size} bytes)` : 
+      ownerLid: getOwnerLid(sessionPath),
+      // [FIX] Revérifier l'existence du fichier en direct (pas la valeur figée au démarrage),
+      // sinon le statut affiché reste "Non trouvé" même après un .setrespons réussi.
+      audioFile: fs.existsSync(audioFilePath) ?
+        `${path.basename(audioFilePath)} (${fs.statSync(audioFilePath).size} bytes)` :
         'Non trouvé'
     })
   };
