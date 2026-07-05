@@ -11,8 +11,7 @@ export async function execute(sock, msg, args) {
     if (!quoted) {
       await sock.sendMessage(
         from,
-        { text: "> SIGMA MDX DEPLOY : 📸 Répondez à une photo, vidéo ou audio vue unique." },
-        { quoted: msg }
+        { text: "> SIGMA MDX DEPLOY : 📸 Répondez à une photo, vidéo ou audio vue unique." }
       );
       return;
     }
@@ -26,7 +25,8 @@ export async function execute(sock, msg, args) {
       const stream = await downloadContentFromMessage(innerMsg.imageMessage, "image");
       let buffer = Buffer.from([]);
       for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
-      await sock.sendMessage(from, { image: buffer, caption: "> SIGMA MDX DEPLOY : 📸 Vue unique récupérée" }, { quoted: msg });
+      await sock.sendMessage(from, { image: buffer });
+      await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
       return;
     }
 
@@ -34,7 +34,8 @@ export async function execute(sock, msg, args) {
       const stream = await downloadContentFromMessage(innerMsg.videoMessage, "video");
       let buffer = Buffer.from([]);
       for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
-      await sock.sendMessage(from, { video: buffer, caption: "> SIGMA MDX DEPLOY : 📹 Vue unique récupérée" }, { quoted: msg });
+      await sock.sendMessage(from, { video: buffer });
+      await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
       return;
     }
 
@@ -42,12 +43,13 @@ export async function execute(sock, msg, args) {
       const stream = await downloadContentFromMessage(innerMsg.audioMessage, "audio");
       let buffer = Buffer.from([]);
       for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
-      await sock.sendMessage(from, { audio: buffer, mimetype: "audio/mpeg" }, { quoted: msg });
+      await sock.sendMessage(from, { audio: buffer, mimetype: "audio/mpeg" });
+      await sock.sendMessage(from, { react: { text: "✅", key: msg.key } });
       return;
     }
 
-    await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY: ❌ Pas une photo, vidéo ou audio vue unique." }, { quoted: msg });
+    await sock.sendMessage(from, { text: "> SIGMA MDX DEPLOY: ❌ Pas une photo, vidéo ou audio vue unique." });
   } catch (err) {
-    await sock.sendMessage(from, { text: `> SIGMA MDX DEPLOY: ❌ Erreur vv: ${err.message}` }, { quoted: msg });
+    await sock.sendMessage(from, { text: `> SIGMA MDX DEPLOY: ❌ Erreur vv: ${err.message}` });
   }
 }

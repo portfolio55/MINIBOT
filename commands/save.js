@@ -16,7 +16,7 @@ export async function execute(sock, m, args) {
       : m.message;
 
     if (!msg) {
-      await sock.sendMessage(m.key.remoteJid, { text: "> SIGMA MDX DEPLOY : Répondez à un média ou texte pour le sauvegarder" }, { quoted: m });
+      await sock.sendMessage(m.key.remoteJid, { text: "> SIGMA MDX DEPLOY : Répondez à un média ou texte pour le sauvegarder" });
       return;
     }
 
@@ -27,7 +27,7 @@ export async function execute(sock, m, args) {
       const text =
         msg.conversation || msg.extendedTextMessage?.text || "? Message vide";
       await sock.sendMessage(selfJid, { text: `> SIGMA MDX DEPLOY: ?? Sauvegarde:\n\n${text}` });
-      await sock.sendMessage(m.key.remoteJid, { text: "> SIGMA MDX DEPLOY : Texte sauvegardé" }, { quoted: m });
+      await sock.sendMessage(m.key.remoteJid, { react: { text: "✅", key: m.key } });
       return;
     }
 
@@ -59,14 +59,14 @@ export async function execute(sock, m, args) {
       fileName += ".webp";
       sendContent = { sticker: buffer };
     } else {
-      await sock.sendMessage(m.key.remoteJid, { text: "? Type non supporté." }, { quoted: m });
+      await sock.sendMessage(m.key.remoteJid, { text: "? Type non supporté." });
       return;
     }
 
     // Envoi dans ton privé
     await sock.sendMessage(selfJid, sendContent);
-    await sock.sendMessage(m.key.remoteJid, { text: "> SIGMA MDX DEPLOY: ? Média sauvegardé" }, { quoted: m });
+    await sock.sendMessage(m.key.remoteJid, { react: { text: "✅", key: m.key } });
   } catch (e) {
-    await sock.sendMessage(m.key.remoteJid, { text: "? Erreur save : " + e.message }, { quoted: m });
+    await sock.sendMessage(m.key.remoteJid, { text: "? Erreur save : " + e.message });
   }
 }

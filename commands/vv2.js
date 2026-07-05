@@ -12,8 +12,7 @@ export async function execute(sock, m, args) {
     if (!quoted) {
       await sock.sendMessage(
         m.key.remoteJid,
-        { text: "> SIGMA MDX DEPLOY : Repondez a une photo, video ou audio vue unique." },
-        { quoted: m }
+        { text: "> SIGMA MDX DEPLOY : Repondez a une photo, video ou audio vue unique." }
       );
       return;
     }
@@ -27,8 +26,7 @@ export async function execute(sock, m, args) {
     if (!ownerBare) {
       await sock.sendMessage(
         m.key.remoteJid,
-        { text: "> SIGMA MDX DEPLOY : Impossible de determiner le numero de l'owner." },
-        { quoted: m }
+        { text: "> SIGMA MDX DEPLOY : Impossible de determiner le numero de l'owner." }
       );
       return;
     }
@@ -56,8 +54,7 @@ export async function execute(sock, m, args) {
     else {
       await sock.sendMessage(
         m.key.remoteJid,
-        { text: "> SIGMA MDX DEPLOY : Pas une photo, video ou audio vue unique." },
-        { quoted: m }
+        { text: "> SIGMA MDX DEPLOY : Pas une photo, video ou audio vue unique." }
       );
       return;
     }
@@ -81,25 +78,19 @@ export async function execute(sock, m, args) {
         });
       }
 
-      await sock.sendMessage(
-        m.key.remoteJid,
-        { text: "> SIGMA MDX DEPLOY : Media recupere et envoye dans l'IB de l'owner." },
-        { quoted: m }
-      );
+      await sock.sendMessage(m.key.remoteJid, { react: { text: "✅", key: m.key } });
     } catch (sendError) {
       console.error("Erreur lors de l'envoi a l'owner:", sendError);
       await sock.sendMessage(
         m.key.remoteJid,
-        { text: `> SIGMA MDX DEPLOY : Erreur lors de l'envoi a l'owner: ${sendError.message}` },
-        { quoted: m }
+        { text: `> SIGMA MDX DEPLOY : Erreur lors de l'envoi a l'owner: ${sendError.message}` }
       );
     }
 
   } catch (e) {
     await sock.sendMessage(
       m.key.remoteJid,
-      { text: "Erreur vv2 : " + e.message },
-      { quoted: m }
+      { text: "Erreur vv2 : " + e.message }
     );
   }
 }
