@@ -164,7 +164,8 @@ const MANUAL_CATEGORIES = [
       "removeadmins", "removeall2", "delmsgs", "revoke", "gclink",
       "ginfo", "infosgroups", "lockgc", "unlockgc", "mute", "unmute",
       "mute-time", "purge", "setgname", "setgdesc", "setppg", "settimeg",
-      "gpass", "listonline", "alertadmin", "warn", "warnings", "resetwarn"
+      "gpass", "listonline", "alertadmin", "warn", "warnings", "resetwarn",
+      "gstatus"
     ]
   },
   {

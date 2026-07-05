@@ -54,7 +54,7 @@ A multi-user WhatsApp bot platform built with Baileys 6.7.19, Express, and Socke
 - Bot dashboard at `/dashboard.html`
 - Real-time status via Socket.io
 - Auto-reconnect on server restart
-- 144 commands with `.` prefix (139 in `commands/`, 6 in `bug.js`)
+- 155 commands with `.` prefix (149 in `commands/`, 6 in `bug.js`)
 - 15 protections (14 group protections via `protections.js`, audiorespons via `protections2.js`)
 
 ## Multi-User Isolation
