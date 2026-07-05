@@ -254,8 +254,22 @@ app.post("/api/pairing/start", pairingLimiter, async (req, res) => {
         });
       }
 
-      // Si le bot est en cours de pairing ou connecting, le stopper d'abord
+      // [ANTI-CHURN QR/PAIRING] Si une tentative est encore "fraîche" (en cours de
+      // pairing/connecting/conflict depuis moins de PAIRING_COOLDOWN_MS), on ne la
+      // recrée PAS : recréer trop vite casse le handshake WhatsApp en plein vol et
+      // déclenche des rejets 503 (unavailableService) en boucle côté WhatsApp.
+      const PAIRING_COOLDOWN_MS = 25000;
       if (["pairing", "connecting", "conflict"].includes(existingBot.status)) {
+        const createdAtMs = existingBot.createdAt ? new Date(existingBot.createdAt).getTime() : 0;
+        const ageMs = Date.now() - createdAtMs;
+        if (createdAtMs && ageMs < PAIRING_COOLDOWN_MS) {
+          return res.status(429).json({
+            error: `Une tentative est déjà en cours pour ce numéro. Patiente ${Math.ceil((PAIRING_COOLDOWN_MS - ageMs) / 1000)}s avant de réessayer (WhatsApp bloque les tentatives trop rapprochées).`,
+            uuid: existingBot.uuid,
+            token: existingBot.token,
+            retryAfterMs: PAIRING_COOLDOWN_MS - ageMs
+          });
+        }
         try {
           await botManager.stopBot(existingBot.uuid);
         } catch {}
