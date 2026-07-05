@@ -57,21 +57,27 @@ export async function usePostgresAuthState(uuid) {
         );
       }
 
-      // [PERF FIX] Les écritures étaient envoyées une par une avec `await` séquentiel
-      // dans une boucle : chaque clé attendait le round-trip réseau de la précédente
-      // avant de démarrer, ce qui multipliait la latence par le nombre de clés
-      // modifiées (accumulation ressentie comme "bot lent"). On les envoie maintenant
-      // en parallèle (le pool supporte jusqu'à 50 connexions), avec Promise.allSettled
-      // pour continuer même si une écriture échoue individuellement.
-      for (const { key, value } of upserts) {
+      // [PERF FIX 2] L'ancienne version envoyait UNE requête INSERT par clé, en parallèle
+      // via Promise.allSettled. Avec plusieurs bots actifs, chaque flush (toutes les 500ms)
+      // pouvait générer des dizaines de requêtes simultanées vers Neon — chaque connexion
+      // consommant du CPU côté serveur pour parser/planifier/écrire son propre WAL. Sous
+      // charge multi-bots, Neon se retrouvait saturé : les INSERT individuels ralentissaient
+      // jusqu'à 10-20+ secondes chacun (voir logs), ce qui bloquait les commandes (.menu,
+      // .ping) qui attendent la sauvegarde des clés de session. On regroupe maintenant TOUTES
+      // les clés modifiées dans un seul INSERT multi-lignes (via UNNEST) — une seule requête,
+      // une seule transaction, quel que soit le nombre de clés à écrire.
+      if (upserts.length > 0) {
+        const keys = upserts.map((u) => u.key);
+        const values = upserts.map((u) => JSON.stringify(u.value));
         tasks.push(
           query(
             `INSERT INTO baileys_auth (uuid, key, value, updated_at)
-             VALUES ($1, $2, $3::jsonb, NOW())
-             ON CONFLICT (uuid, key) DO UPDATE SET value = $3::jsonb, updated_at = NOW()`,
-            [uuid, key, JSON.stringify(value)]
+             SELECT $1, k, v::jsonb, NOW()
+             FROM UNNEST($2::text[], $3::text[]) AS t(k, v)
+             ON CONFLICT (uuid, key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+            [uuid, keys, values]
           ).catch((err) => {
-            logger.error(`[AuthState] Flush write error ${key}: ${err.message}`);
+            logger.error(`[AuthState] Flush batch upsert error (${keys.length} clés): ${err.message}`);
           })
         );
       }
