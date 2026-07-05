@@ -241,12 +241,34 @@ async function ensureTables() {
   // [ANTI-ABUS ESSAI 24H] Historique des IP ayant déjà consommé un essai gratuit.
   // Empêche une même personne d'enchaîner plusieurs essais gratuits en changeant
   // simplement de numéro de téléphone (le blocage par numéro seul est contournable ainsi).
+  // [FIX] Une IP peut être partagée par de nombreux vrais clients différents (CGNAT très
+  // répandu sur les réseaux mobiles en Afrique) — bloquer dès le 1er essai sur une IP
+  // pénalisait injustement des personnes qui n'avaient jamais eu de bot. On autorise donc
+  // plusieurs essais par IP (voir IP_TRIAL_LIMIT) au lieu d'un seul, tout en gardant le
+  // blocage par numéro de téléphone strict (un numéro = une personne, sans ambiguïté).
   await query(`
     CREATE TABLE IF NOT EXISTS trial_ip_history (
       ip_address VARCHAR(45) PRIMARY KEY,
       used_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Migration schéma: passer d'une ligne unique par IP (PK sur ip_address) à plusieurs
+  // lignes par IP (id auto-incrémenté), pour pouvoir compter le nombre d'essais par IP
+  // au lieu de simplement détecter "déjà utilisée une fois".
+  await query(`ALTER TABLE trial_ip_history ADD COLUMN IF NOT EXISTS id SERIAL`);
+  await query(`ALTER TABLE trial_ip_history ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30)`);
+  await query(`ALTER TABLE trial_ip_history DROP CONSTRAINT IF EXISTS trial_ip_history_pkey`);
+  await query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'trial_ip_history_id_pkey'
+      ) THEN
+        ALTER TABLE trial_ip_history ADD CONSTRAINT trial_ip_history_id_pkey PRIMARY KEY (id);
+      END IF;
+    END $$;
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_trial_ip_history_ip ON trial_ip_history(ip_address)`);
   await query(`
     CREATE TABLE IF NOT EXISTS payments (
       id SERIAL PRIMARY KEY,

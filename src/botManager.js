@@ -1042,7 +1042,7 @@ class BotManager extends EventEmitter {
             trialUsed: true,
           });
           await dbRecordTrialPhone(ownerBare);
-          await dbRecordTrialIp(pairingIp);
+          await dbRecordTrialIp(pairingIp, ownerBare);
           accountLines = [
             "",
             "*🔑 TON COMPTE SIGMA MDX*",
