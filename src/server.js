@@ -697,6 +697,26 @@ httpServer.listen(PORT, HOST, async () => {
 
 // Fonction pour reconnecter automatiquement les bots existants
 async function reconnectExistingBots() {
+  // [FIX CONFLIT MULTI-INSTANCE] Sur Replit, l'aperçu de développement (workflow)
+  // et l'app publiée (déploiement VM) tournent en parallèle et partagent la même
+  // base de données (mêmes sessions Baileys). Si les deux se connectent en même
+  // temps au même numéro WhatsApp, WhatsApp éjecte l'un des deux en boucle
+  // ("conflict 440" / "403"), ce qui provoque des reconnexions permanentes, des
+  // rechargements complets de session très lents, et donne l'impression que le
+  // bot est lent/instable pour les utilisateurs.
+  // -> Seul l'environnement de production (déploiement) reconnecte les bots
+  // automatiquement. `REPLIT_DEPLOYMENT` est défini par Replit uniquement dans
+  // les apps déployées, jamais dans l'aperçu de développement.
+  const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
+  if (!isProduction && process.env.FORCE_BOT_RECONNECT !== "true") {
+    logger.info(
+      "⏭️ Reconnexion automatique des bots désactivée (environnement de développement). " +
+      "Seule l'app publiée (production) maintient les bots connectés, pour éviter les conflits de session. " +
+      "Définir FORCE_BOT_RECONNECT=true pour forcer la reconnexion ici (à utiliser uniquement si la production est arrêtée)."
+    );
+    return;
+  }
+
   try {
     logger.info("🔄 Reconnexion automatique des bots existants...");
     const bots = await listAllBots();
