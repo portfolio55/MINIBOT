@@ -116,7 +116,7 @@ const MANUAL_CATEGORIES = [
   {
     key: "download",
     title: "Download Menu",
-    names: ["play", "youtube", "tiktok", "instagram", "apk", "itunes", "podcast", "down-url", "url", "lyrics", "lyrics2", "lyrictts"]
+    names: ["play", "son", "youtube", "tiktok", "instagram", "apk", "itunes", "podcast", "down-url", "url", "lyrics", "lyrics2", "lyrictts"]
   },
   {
     key: "converter",
