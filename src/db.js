@@ -11,14 +11,22 @@ const { Pool } = pg;
 // NEON_DATABASE_URL a la priorité (base externe pour déploiement VPS) sur DATABASE_URL (Replit interne)
 const CONNECTION_STRING = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
 
+// [FIX] Neon ferme silencieusement les connexions inactives côté serveur (pooler serverless).
+// Si notre pool garde une connexion "idle" plus longtemps que ça, la prochaine requête qui
+// la réutilise échoue avec "Connection terminated due to connection timeout" — c'était la
+// cause des lenteurs/échecs aléatoires (jusqu'à 100s) sur .ping/.menu/.url en production.
+// On réduit idleTimeoutMillis pour que le pool recycle les connexions AVANT que Neon les tue,
+// et on active le TCP keepAlive pour éviter les coupures réseau silencieuses.
 const pool = new Pool({
   connectionString: CONNECTION_STRING,
   max: parseInt(process.env.DB_POOL_MAX || "50"),       // 50 connexions max (adapté pour 300 bots)
   min: parseInt(process.env.DB_POOL_MIN || "5"),        // 5 connexions minimum toujours prêtes
-  idleTimeoutMillis: 60000,                             // Garder les connexions idle plus longtemps
+  idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE_TIMEOUT_MS || "20000"), // recycler avant que Neon coupe
   connectionTimeoutMillis: 10000,                       // Plus de temps pour obtenir une connexion sous charge
   statement_timeout: 30000,
   allowExitOnIdle: false,                               // Ne jamais fermer le pool
+  keepAlive: true,                                      // évite les coupures TCP silencieuses
+  keepAliveInitialDelayMillis: 5000,
   ssl: CONNECTION_STRING?.includes("localhost")
     ? false
     : { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" }
@@ -38,6 +46,25 @@ pool.on("error", (err) => {
  * @param {Array} params - Paramètres de la requête
  * @returns {Promise<import('pg').QueryResult>}
  */
+// [FIX] Erreurs "de connexion" (connexion morte côté Neon, coupure réseau) vs erreurs
+// "de requête" (SQL invalide, contrainte violée, etc.) : seules les premières valent la
+// peine d'être retentées, car une connexion recyclée par le pool a de bonnes chances de
+// fonctionner. Sans ce retry, UNE connexion périmée dans le pool suffisait à faire échouer
+// (ou traîner jusqu'au timeout de la commande, ~60-100s) n'importe quelle commande WhatsApp.
+const CONNECTION_ERROR_PATTERNS = [
+  "Connection terminated",
+  "connection timeout",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "Connection ended unexpectedly",
+  "server closed the connection",
+];
+
+function isRetryableConnectionError(err) {
+  const msg = err?.message || "";
+  return CONNECTION_ERROR_PATTERNS.some((p) => msg.includes(p));
+}
+
 export const query = async (text, params) => {
   const start = Date.now();
   poolStats.totalQueries++;
@@ -50,6 +77,23 @@ export const query = async (text, params) => {
     }
     return res;
   } catch (err) {
+    if (isRetryableConnectionError(err)) {
+      poolStats.connectionRetries = (poolStats.connectionRetries || 0) + 1;
+      logger.warn(`[DB] Connexion périmée détectée, nouvelle tentative: ${err.message}`);
+      try {
+        const res = await pool.query(text, params);
+        const duration = Date.now() - start;
+        if (duration > 200) {
+          poolStats.slowQueries++;
+          logger.warn(`[DB] Requête lente après retry (${duration}ms): ${text.slice(0, 80)}`);
+        }
+        return res;
+      } catch (retryErr) {
+        poolStats.errors++;
+        logger.error(`[DB] Erreur requête (après retry): ${retryErr.message} | SQL: ${text.slice(0, 120)}`);
+        throw retryErr;
+      }
+    }
     poolStats.errors++;
     logger.error(`[DB] Erreur requête: ${err.message} | SQL: ${text.slice(0, 120)}`);
     throw err;
