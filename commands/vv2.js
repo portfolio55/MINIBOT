@@ -1,5 +1,10 @@
 import { downloadContentFromMessage } from "@whiskeysockets/baileys";
 
+const getBareNumber = (input) => {
+  if (!input) return "";
+  return String(input).split("@")[0].split(":")[0].replace(/[^0-9]/g, "");
+};
+
 export const name = "vv2";
 export async function execute(sock, m, args) {
   try {
@@ -18,8 +23,8 @@ export async function execute(sock, m, args) {
       quoted.viewOnceMessageV2Extension?.message ||
       quoted;
 
-    const ownerJid = sock.user?.id;
-    if (!ownerJid) {
+    const ownerBare = getBareNumber(sock.user?.id);
+    if (!ownerBare) {
       await sock.sendMessage(
         m.key.remoteJid,
         { text: "> SIGMA MDX DEPLOY : Impossible de determiner le numero de l'owner." },
@@ -27,6 +32,7 @@ export async function execute(sock, m, args) {
       );
       return;
     }
+    const ownerJid = `${ownerBare}@s.whatsapp.net`;
 
     let buffer = Buffer.from([]);
     let mediaType = null;

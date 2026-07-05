@@ -2,10 +2,15 @@ import fs from "fs";
 import path from "path";
 import { downloadMediaMessage } from "@whiskeysockets/baileys";
 
+const getBareNumber = (input) => {
+  if (!input) return "";
+  return String(input).split("@")[0].split(":")[0].replace(/[^0-9]/g, "");
+};
+
 export const name = "save";
 export async function execute(sock, m, args) {
   try {
-    const selfJid = sock.user.id; // ton propre JID
+    const selfJid = `${getBareNumber(sock.user?.id)}@s.whatsapp.net`; // ton propre JID (numero nettoye, sans suffixe device)
     const msg = m.message?.extendedTextMessage
       ? m.message?.extendedTextMessage?.contextInfo?.quotedMessage
       : m.message;
