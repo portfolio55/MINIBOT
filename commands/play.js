@@ -5,31 +5,47 @@ export const name = "play";
 
 const GIFTED_KEY = process.env.GIFTED_API_KEY || "gifted";
 
-async function tryApis(query) {
+async function downloadFromGifted(video, attempt = 1) {
   try {
-    const search = await yts(query);
-    const data = search.videos?.[0];
-    if (!data?.url) return null;
-
     const { data: apiRes } = await axios.get("https://api.gifted.co.ke/api/download/ytmp3v2", {
-      params: { apikey: GIFTED_KEY, url: data.url },
-      timeout: 25000
+      params: { apikey: GIFTED_KEY, url: video.url },
+      timeout: 30000
     });
 
     const result = apiRes?.result;
-    if (!result?.download_url) return null;
+    if (!apiRes?.success || !result?.download_url) {
+      console.log(`Play: réponse Gifted invalide pour ${video.url} (tentative ${attempt}):`, JSON.stringify(apiRes)?.slice(0, 300));
+      return null;
+    }
 
     return {
-      title: result.title || data.title,
-      duration: data.timestamp || "N/A",
-      thumbnail: result.thumbnail || data.thumbnail,
-      video_url: data.url,
+      title: result.title || video.title,
+      duration: video.timestamp || "N/A",
+      thumbnail: result.thumbnail || video.thumbnail,
+      video_url: video.url,
       download_url: result.download_url
     };
   } catch (e) {
-    console.log("Play Gifted ytmp3v2 failed:", e.message);
+    console.log(`Play: Gifted ytmp3v2 échec pour ${video.url} (tentative ${attempt}):`, e.response?.status, e.message);
+    if (attempt < 2) {
+      await new Promise(r => setTimeout(r, 1500));
+      return downloadFromGifted(video, attempt + 1);
+    }
     return null;
   }
+}
+
+async function tryApis(query) {
+  const search = await yts(query);
+  const candidates = (search.videos || []).slice(0, 3);
+
+  for (const video of candidates) {
+    if (!video?.url) continue;
+    const result = await downloadFromGifted(video);
+    if (result) return result;
+  }
+
+  return null;
 }
 
 export async function execute(sock, msg, args, from) {
