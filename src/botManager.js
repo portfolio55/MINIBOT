@@ -14,6 +14,7 @@ import { pathToFileURL, fileURLToPath } from "url";
 import pino from "pino";
 import { Boom } from "@hapi/boom";
 import { EventEmitter } from "events";
+import QRCode from "qrcode";
 import bcrypt from "bcrypt";
 import logger from "./utils/logger.js";
 import { getBotMode, getReactionEmoji } from "./utils/botMode.js";
@@ -581,7 +582,8 @@ class BotManager extends EventEmitter {
       sendQueueRunning: false,
       sendLastSentAt: 0,
       groupManager: createGroupManager(sessionPath),
-      welcomeSent: false
+      welcomeSent: false,
+      pairingMethod: "code"
     });
 
     if (usePairingLock) this.pairingLocks.set(phoneNumber, uuid);
@@ -591,13 +593,16 @@ class BotManager extends EventEmitter {
   /**
    * Démarre un bot (création de la socket Baileys)
    * @param {string} uuid - UUID du bot
-   * @returns {Promise<string>} Pairing code si nécessaire
+   * @param {string} method - Méthode d'appairage: "code" (pairing code) ou "qr" (QR code)
+   * @returns {Promise<string>} Pairing code si nécessaire (null en mode QR)
    */
-  async startBot(uuid) {
+  async startBot(uuid, method = "code") {
     const bot = this.bots.get(uuid);
     if (!bot) {
       throw new Error(`Bot ${uuid} introuvable`);
     }
+
+    bot.pairingMethod = method === "qr" ? "qr" : "code";
 
     if (bot.socket && bot.status === "connected") {
       logger.warn(`Bot ${uuid} est déjà connecté`);
@@ -684,7 +689,7 @@ class BotManager extends EventEmitter {
       // Gérer la connexion
       let pairingCode = null;
 
-      if (!state.creds.registered) {
+      if (!state.creds.registered && bot.pairingMethod !== "qr") {
         // [AMÉLIORÉ] Générer le pairing code avec retry interne
         // Attendre que la connexion WebSocket soit stable avant de demander le code
         const pairingDelay = parseInt(process.env.PAIRING_DELAY_MS || "4000");
@@ -708,6 +713,8 @@ class BotManager extends EventEmitter {
           }
         }
       }
+      // Mode QR : ne pas appeler requestPairingCode, Baileys émettra un `qr`
+      // dans connection.update qui sera transformé en data URL (voir handleConnectionUpdate)
 
       // Configurer les événements de connexion
       sock.ev.on("connection.update", async (update) => {
@@ -756,9 +763,20 @@ class BotManager extends EventEmitter {
     const bot = this.bots.get(uuid);
     if (!bot) return;
 
-    const { connection, lastDisconnect } = update;
+    const { connection, lastDisconnect, qr } = update;
 
     try {
+      if (qr && bot.pairingMethod === "qr" && bot.status !== "connected") {
+        try {
+          const qrDataUrl = await QRCode.toDataURL(qr, { margin: 1, scale: 6 });
+          logger.info(`QR code généré pour ${uuid}`);
+          this.emit("qr-code", { uuid, qr: qrDataUrl });
+        } catch (err) {
+          logger.error(`Erreur génération QR code pour ${uuid}: ${err.message}`);
+          this.emit("pairing-error", { uuid, error: err.message });
+        }
+      }
+
       if (connection === "open") {
         logger.info(`Bot ${uuid} connecte avec succes`);
         bot.status = "connected";

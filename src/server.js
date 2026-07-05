@@ -165,6 +165,10 @@ botManager.on("pairing-error", ({ uuid, error }) => {
   io.to(`pairing:${uuid}`).emit("pairing-error", { uuid, error });
 });
 
+botManager.on("qr-code", ({ uuid, qr }) => {
+  io.to(`pairing:${uuid}`).emit("qr-code", { uuid, qr });
+});
+
 botManager.on("bot-connected", ({ uuid }) => {
   io.to(`pairing:${uuid}`).emit("pairing-success", { uuid });
   io.to(`bot:${uuid}`).emit("bot-status", { uuid, status: "connected" });
@@ -217,6 +221,7 @@ logger.info(`[DB Keepalive] Ping démarré toutes les ${DB_KEEPALIVE_INTERVAL_MS
 app.post("/api/pairing/start", pairingLimiter, async (req, res) => {
   try {
     const { phoneNumber } = req.body;
+    const method = req.body.method === "qr" ? "qr" : "code";
 
     if (!phoneNumber) {
       return res.status(400).json({ error: "Numéro WhatsApp requis" });
@@ -287,7 +292,7 @@ app.post("/api/pairing/start", pairingLimiter, async (req, res) => {
           try { await botManager.stopBot(uuid); } catch {}
           await new Promise(r => setTimeout(r, 2000 + attempt * 1000));
         }
-        pairingCode = await botManager.startBot(uuid);
+        pairingCode = await botManager.startBot(uuid, method);
         lastError = null;
         break; // Succès, sortir de la boucle
       } catch (err) {

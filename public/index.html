@@ -279,6 +279,30 @@
         .status.error { background: rgba(255,95,86,0.08); color: var(--danger); border-color: var(--danger); display: block; }
         .status.info { background: rgba(255,189,46,0.08); color: var(--warn); border-color: var(--warn); display: block; }
 
+        .method-toggle {
+            display: flex; gap: 8px; margin-bottom: 16px;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 4px;
+        }
+        .method-btn {
+            flex: 1; padding: 9px 10px; border: none; border-radius: calc(var(--radius) - 3px);
+            background: transparent; color: var(--muted); font-family: var(--mono);
+            font-size: 12.5px; cursor: pointer; transition: background .15s, color .15s;
+        }
+        .method-btn.active { background: var(--accent); color: #04120a; font-weight: 700; }
+
+        .qr-code-container {
+            margin-top: 18px;
+            padding: 18px;
+            background: var(--bg);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+            text-align: center;
+            display: none;
+        }
+        .qr-code-container.active { display: block; }
+        .qr-code-container img { display: block; margin: 0 auto 14px; }
+
         .pairing-code-container {
             margin-top: 18px;
             padding: 18px;
@@ -496,7 +520,16 @@
                     <div class="term-body">
                         <span class="badge-live"><span class="pulse"></span> online</span>
                         <h3>connecter mon whatsapp</h3>
-                        <p class="sub">génère un pairing code et lie l'appareil</p>
+                        <p class="sub">génère un pairing code ou scanne un QR code pour lier l'appareil</p>
+
+                        <div class="method-toggle" id="methodToggle" role="tablist">
+                            <button type="button" class="method-btn active" id="methodCodeBtn" data-method="code">
+                                pairing code
+                            </button>
+                            <button type="button" class="method-btn" id="methodQrBtn" data-method="qr">
+                                QR code
+                            </button>
+                        </div>
 
                         <form id="pairingForm">
                             <div class="form-group">
@@ -530,6 +563,20 @@
                                     <li><strong>lier un appareil</strong></li>
                                     <li><strong>lier avec un code</strong></li>
                                     <li>entre le code ci-dessus</li>
+                                </ol>
+                            </div>
+                        </div>
+
+                        <div class="qr-code-container" id="qrContainer">
+                            <div class="pairing-code-label">QR code</div>
+                            <img id="qrImage" alt="QR code de connexion" style="width:220px;height:220px;border-radius:8px;background:#fff;padding:8px;">
+                            <div class="instructions">
+                                <strong>instructions :</strong>
+                                <ol>
+                                    <li>ouvre WhatsApp sur ton téléphone</li>
+                                    <li><strong>paramètres</strong> → <strong>appareils liés</strong></li>
+                                    <li><strong>lier un appareil</strong></li>
+                                    <li>scanne le QR code ci-dessus</li>
                                 </ol>
                             </div>
                         </div>
@@ -748,14 +795,32 @@
             let currentUUID = null;
             let currentToken = null;
             let retryCount = 0;
+            let currentMethod = 'code';
 
             const form = document.getElementById('pairingForm');
             const submitBtn = document.getElementById('submitBtn');
             const statusDiv = document.getElementById('status');
             const pairingContainer = document.getElementById('pairingContainer');
             const pairingCodeDiv = document.getElementById('pairingCode');
+            const qrContainer = document.getElementById('qrContainer');
+            const qrImage = document.getElementById('qrImage');
+            const methodCodeBtn = document.getElementById('methodCodeBtn');
+            const methodQrBtn = document.getElementById('methodQrBtn');
             const tokenDisplay = document.getElementById('tokenDisplay');
             const tokenValue = document.getElementById('tokenValue');
+
+            function setMethod(method) {
+                currentMethod = method;
+                methodCodeBtn.classList.toggle('active', method === 'code');
+                methodQrBtn.classList.toggle('active', method === 'qr');
+                pairingContainer.classList.remove('active');
+                qrContainer.classList.remove('active');
+                submitBtn.textContent = method === 'qr' ? 'générer le qr code' : 'générer le code';
+                hideStatus();
+            }
+
+            methodCodeBtn.addEventListener('click', function() { setMethod('code'); });
+            methodQrBtn.addEventListener('click', function() { setMethod('qr'); });
 
             function showStatus(message, type) {
                 statusDiv.textContent = message;
@@ -769,14 +834,24 @@
             function displayPairingCode(code) {
                 pairingCodeDiv.textContent = code.split('').join(' ');
                 pairingContainer.classList.add('active');
+                qrContainer.classList.remove('active');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'code généré ✓';
                 hideStatus();
             }
 
+            function displayQrCode(qr) {
+                qrImage.src = qr;
+                qrContainer.classList.add('active');
+                pairingContainer.classList.remove('active');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'qr code généré ✓';
+                hideStatus();
+            }
+
             function resetButton() {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'générer le code';
+                submitBtn.textContent = currentMethod === 'qr' ? 'générer le qr code' : 'générer le code';
             }
 
             function loadSocketIO() {
@@ -832,6 +907,12 @@
                         }
                     });
 
+                    socket.on('qr-code', function(data) {
+                        if (data.uuid === currentUUID && data.qr) {
+                            displayQrCode(data.qr);
+                        }
+                    });
+
                     socket.on('pairing-success', function(data) {
                         if (data.uuid === currentUUID) {
                             showStatus('connexion réussie, redirection...', 'success');
@@ -872,6 +953,7 @@
                 submitBtn.innerHTML = '<span class="loading"></span>génération...';
                 hideStatus();
                 pairingContainer.classList.remove('active');
+                qrContainer.classList.remove('active');
                 tokenDisplay.classList.remove('active');
                 localStorage.removeItem(STORAGE_TOKEN_KEY);
                 retryCount = 0;
@@ -884,7 +966,7 @@
                     var response = await fetch('/api/pairing/start', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phoneNumber: phoneNumber })
+                        body: JSON.stringify({ phoneNumber: phoneNumber, method: currentMethod })
                     });
 
                     var data = await response.json();
@@ -925,7 +1007,7 @@
                     if (data.pairingCode) {
                         displayPairingCode(data.pairingCode);
                     } else {
-                        showStatus('attente du code d\'appairage...', 'info');
+                        showStatus(currentMethod === 'qr' ? 'génération du qr code...' : 'attente du code d\'appairage...', 'info');
                         if (!socketReady) {
                             pollForPairingCode(currentUUID, currentToken);
                         }
