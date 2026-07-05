@@ -164,6 +164,21 @@ async function loadCommands() {
           globalCommands[nameKey] = command;
           loadedFromDir++;
           logger.debug(`✅ Commande chargée: ${command.name} depuis ${file}`);
+
+          // [ALIASES] Enregistrer les alias éventuels (ex: "s" pour "sticker")
+          if (Array.isArray(command.aliases)) {
+            for (const alias of command.aliases) {
+              const aliasKey = String(alias).toLowerCase();
+              if (!aliasKey || aliasKey === nameKey) continue;
+              if (globalCommands[aliasKey]) {
+                const prev = globalCommands[aliasKey];
+                const prevSrc = prev?.__source || "unknown";
+                logger.warn(`⚠️ Doublon alias: ${aliasKey} (${prevSrc}) ← remplacé par alias de ${nameKey} (commands/${file})`);
+              }
+              globalCommands[aliasKey] = command;
+              logger.debug(`✅ Alias chargé: ${aliasKey} → ${nameKey}`);
+            }
+          }
         }
       } catch (err) {
         logger.error(`❌ Erreur chargement commande ${file}: ${err.message}`);
