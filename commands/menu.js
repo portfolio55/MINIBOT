@@ -152,7 +152,7 @@ const MANUAL_CATEGORIES = [
       "removeadmins", "removeall2", "delmsgs", "revoke", "gclink",
       "ginfo", "infosgroups", "lockgc", "unlockgc", "mute", "unmute",
       "mute-time", "purge", "setgname", "setgdesc", "setppg", "settimeg",
-      "gpass", "listonline", "alertadmin"
+      "gpass", "listonline", "alertadmin", "warn", "warnings", "resetwarn"
     ]
   },
   {
@@ -161,7 +161,8 @@ const MANUAL_CATEGORIES = [
     names: [
       "antilink", "antibot", "antisticker", "antivideo", "antiaudio",
       "antimessage", "antipromote", "autoblock", "autoreact", "autovv",
-      "protectionstate"
+      "protectionstate", "antiflood", "antiword", "addword", "delword",
+      "listwords", "antidelete"
     ]
   },
   {

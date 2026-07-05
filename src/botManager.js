@@ -1160,6 +1160,7 @@ class BotManager extends EventEmitter {
 
     const botContext = {
       sessionPath: bot.sessionPath, owners, sudoList, uuid, isOwner, isSudo, groupManager: bot.groupManager,
+      protectionManager: bot.protectionManager,
       getUserMessageIds: (groupJid, userJid) => this.getCachedMessagesForUser(uuid, groupJid, userJid),
       clearUserMessages: (groupJid, userJid) => this.clearCachedMessagesForUser(uuid, groupJid, userJid)
     };

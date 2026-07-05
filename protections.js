@@ -39,7 +39,9 @@ const REACTIONS = {
   welcome: "👋",
   goodbye: "💔",
   antiPromote: "⛔",
-  antiSpam: "🛡️"
+  antiSpam: "🛡️",
+  antiWord: "🚯",
+  antiDelete: "🗑️"
 };
 
 const RANDOM_REACTIONS = ["👍","❤️","😂","😮","😢","🙏","🔥","🎉","💯","⚡","🌟","✨","💪"];
@@ -531,6 +533,176 @@ export function antiVideo(sock, getGP = getGroupProtections, manager = null) {
   });
 }
 
+// =================== ANTI-WORD (liste de mots interdits) ===================
+export function antiWord(sock, getGP = getGroupProtections, manager = null, groupManager = null) {
+  sock.ev.on("messages.upsert", async ({ messages }) => {
+    for (const msg of messages) {
+      if (!msg.message || msg.key.fromMe) continue;
+      const from = msg.key.remoteJid;
+      if (!from.endsWith('@g.us')) continue;
+
+      const groupProtections = getGP(from);
+      if (!groupProtections?.antiWord) continue;
+      if (!groupManager) continue;
+
+      if (await shouldSkipProtection(sock, msg, manager)) continue;
+
+      const bannedWords = groupManager.getBannedWords(from);
+      if (!bannedWords || bannedWords.length === 0) continue;
+
+      const text = (manager ? manager.getMessageContent(msg) : (msg.message?.conversation || msg.message?.extendedTextMessage?.text || ''))?.toLowerCase();
+      if (!text) continue;
+
+      const matched = bannedWords.find(w => text.includes(w));
+      if (!matched) continue;
+
+      const sender = msg.key.participant || from;
+
+      try {
+        await sock.sendMessage(from, { delete: msg.key });
+        await sock.sendMessage(from, { text: `> SIGMA MDX DEPLOY: Mot interdit détecté ("${matched}") ! @${getBareNumber(sender)}`, mentions: [sender] });
+        await sock.sendMessage(from, { react: { text: REACTIONS.antiWord, key: msg.key } });
+        ProtectionLogger.log('ANTI-WORD', `Message supprimé (mot: ${matched})`, sender, from);
+      } catch (error) {
+        ProtectionLogger.error('ANTI-WORD', error);
+      }
+    }
+  });
+}
+
+// =================== ANTI-DELETE ===================
+// Recapture les messages supprimés (texte + médias légers) tant qu'ils restent dans le cache mémoire du bot.
+// Limite connue : seuls les messages reçus depuis le démarrage du bot (fenêtre glissante bornée) peuvent être récupérés.
+export function antiDelete(sock, getGP = getGroupProtections, manager = null) {
+  const cache = new Map(); // msgId -> { from, sender, content, ts }
+  const MAX_ENTRIES = 1500;
+  const TTL_MS = 6 * 60 * 60 * 1000; // 6h
+
+  const remember = (id, entry) => {
+    cache.set(id, entry);
+    if (cache.size > MAX_ENTRIES) {
+      const oldest = cache.keys().next().value;
+      cache.delete(oldest);
+    }
+  };
+
+  sock.ev.on("messages.upsert", async ({ messages }) => {
+    for (const msg of messages) {
+      if (!msg.message) continue;
+      const from = msg.key.remoteJid;
+      if (!from?.endsWith('@g.us')) continue;
+
+      const revoke = msg.message.protocolMessage;
+      if (revoke && (revoke.type === 0 || revoke.type === "REVOKE")) {
+        const groupProtections = getGP(from);
+        if (!groupProtections?.antiDelete) continue;
+
+        const targetId = revoke.key?.id;
+        const entry = targetId ? cache.get(targetId) : null;
+        if (!entry) continue;
+
+        try {
+          const now = Date.now();
+          if (now - entry.ts > TTL_MS) { cache.delete(targetId); continue; }
+
+          const deleter = msg.key.participant || msg.participant || from;
+          const header = `> SIGMA MDX DEPLOY: 🗑️ Message supprimé récupéré\n👤 Auteur: @${getBareNumber(entry.sender)}\n🧹 Supprimé par: @${getBareNumber(deleter)}`;
+
+          if (entry.mediaBuffer) {
+            await sock.sendMessage(from, {
+              [entry.mediaType]: entry.mediaBuffer,
+              caption: `${header}${entry.text ? `\n\n${entry.text}` : ''}`,
+              mentions: [entry.sender, deleter].filter(Boolean)
+            });
+          } else {
+            await sock.sendMessage(from, {
+              text: `${header}\n\n${entry.text || '(contenu non textuel)'}`,
+              mentions: [entry.sender, deleter].filter(Boolean)
+            });
+          }
+          cache.delete(targetId);
+          ProtectionLogger.log('ANTI-DELETE', 'Message supprimé recapturé', entry.sender, from);
+        } catch (error) {
+          ProtectionLogger.error('ANTI-DELETE', error);
+        }
+        continue;
+      }
+
+      if (msg.key.fromMe) continue;
+      const sender = msg.key.participant || from;
+      const text = manager ? manager.getMessageContent(msg) : (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '');
+
+      let mediaBuffer = null;
+      let mediaType = null;
+      try {
+        const MAX_MEDIA_BYTES = 3 * 1024 * 1024; // 3MB cap pour rester léger en mémoire
+        let mediaMsg = null;
+        if (msg.message.imageMessage) { mediaMsg = msg.message.imageMessage; mediaType = "image"; }
+        else if (msg.message.stickerMessage) { mediaMsg = msg.message.stickerMessage; mediaType = "sticker"; }
+
+        if (mediaMsg && (mediaMsg.fileLength ? Number(mediaMsg.fileLength) <= MAX_MEDIA_BYTES : true)) {
+          const stream = await downloadContentFromMessage(mediaMsg, mediaType);
+          let buffer = Buffer.from([]);
+          for await (const chunk of stream) {
+            buffer = Buffer.concat([buffer, chunk]);
+            if (buffer.length > MAX_MEDIA_BYTES) { buffer = null; break; }
+          }
+          mediaBuffer = buffer;
+        }
+      } catch {
+        mediaBuffer = null;
+      }
+
+      remember(msg.key.id, { from, sender, text, mediaBuffer, mediaType, ts: Date.now() });
+    }
+  });
+}
+
+// =================== AFK ===================
+// Système global (pas de toggle par groupe) : `.afk [raison]` marque l'utilisateur absent,
+// n'importe quel message qu'il envoie ensuite le remet automatiquement disponible.
+export function afkSystem(sock, getGP = getGroupProtections, manager = null) {
+  if (!manager) return;
+  if (!manager._afkMap) manager._afkMap = new Map();
+
+  sock.ev.on("messages.upsert", async ({ messages }) => {
+    for (const msg of messages) {
+      if (!msg.message || msg.key.fromMe) continue;
+      const from = msg.key.remoteJid;
+      const sender = msg.key.participant || from;
+
+      try {
+        if (manager._afkMap.has(sender)) {
+          const info = manager._afkMap.get(sender);
+          manager._afkMap.delete(sender);
+          const durationMin = Math.max(1, Math.round((Date.now() - info.since) / 60000));
+          await sock.sendMessage(from, {
+            text: `> SIGMA MDX DEPLOY: 👋 @${getBareNumber(sender)} n'est plus absent (${durationMin} min).`,
+            mentions: [sender]
+          }).catch(() => {});
+        }
+
+        const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+        const repliedTo = msg.message?.extendedTextMessage?.contextInfo?.participant;
+        const targets = [...mentioned, repliedTo].filter(Boolean);
+
+        for (const target of targets) {
+          if (manager._afkMap.has(target)) {
+            const info = manager._afkMap.get(target);
+            const durationMin = Math.max(1, Math.round((Date.now() - info.since) / 60000));
+            await sock.sendMessage(from, {
+              text: `> SIGMA MDX DEPLOY: 💤 @${getBareNumber(target)} est absent(e) depuis ${durationMin} min.\nRaison : ${info.reason || "non précisée"}`,
+              mentions: [target]
+            }).catch(() => {});
+          }
+        }
+      } catch (error) {
+        ProtectionLogger.error('AFK', error);
+      }
+    }
+  });
+}
+
 // =================== AUTO-REACT ===================
 export function autoReact(sock, getGP = getGroupProtections, manager = null) {
   sock.ev.on("messages.upsert", async ({ messages }) => {
@@ -837,7 +1009,9 @@ export function initProtections(sock, ownerNumber, sessionPath, sharedGroupManag
     antiSpam,
     autoSigmaChat,
     sigmaVoice,
-    antipromote1
+    antipromote1,
+    antiDelete,
+    afkSystem
   ];
 
   ProtectionLogger.log('SYSTÈME', 'Démarrage des protections...');
@@ -846,6 +1020,10 @@ export function initProtections(sock, ownerNumber, sessionPath, sharedGroupManag
     protection(sock, _getGP, manager);
     ProtectionLogger.log('SYSTÈME', `${protection.name.toUpperCase()} activée ?`);
   });
+
+  // antiWord a besoin du groupManager (liste de mots interdits par groupe)
+  antiWord(sock, _getGP, manager, _gm);
+  ProtectionLogger.log('SYSTÈME', 'ANTIWORD activée');
 
   ProtectionLogger.log('SYSTÈME', 'Toutes les protections sont ACTIVES ?');
   return manager;

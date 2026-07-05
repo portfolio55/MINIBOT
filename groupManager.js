@@ -24,7 +24,9 @@ const DEFAULT_PROTECTIONS = {
   welcome: false,
   goodbye: false,
   autoVV2: false,
-  autoSigmaChat: false
+  autoSigmaChat: false,
+  antiWord: false,
+  antiDelete: false
 };
 
 // Extrait l'UUID du sessionPath (./sessions/bot_<UUID>)
@@ -85,11 +87,63 @@ export const createGroupManager = (sessionPath) => {
     console.log(`[GROUP MANAGER] Nouveau groupe : ${groupJid.split("@")[0]}`);
   };
 
+  // === [WARN SYSTEM] Avertissements par utilisateur, stockés dans le même blob JSONB que les protections ===
+  const getWarnCount = (groupJid, userJid) => {
+    return cache[groupJid]?._warns?.[userJid] || 0;
+  };
+
+  const addWarn = (groupJid, userJid) => {
+    if (!cache[groupJid]) cache[groupJid] = { ...DEFAULT_PROTECTIONS };
+    if (!cache[groupJid]._warns) cache[groupJid]._warns = {};
+    const next = (cache[groupJid]._warns[userJid] || 0) + 1;
+    cache[groupJid]._warns[userJid] = next;
+    persistToDB(groupJid);
+    return next;
+  };
+
+  const resetWarn = (groupJid, userJid) => {
+    if (cache[groupJid]?._warns) {
+      delete cache[groupJid]._warns[userJid];
+      persistToDB(groupJid);
+    }
+  };
+
+  // === [ANTIWORD] Liste de mots interdits par groupe, stockée dans le même blob JSONB ===
+  const getBannedWords = (groupJid) => {
+    return cache[groupJid]?._bannedWords || [];
+  };
+
+  const addBannedWord = (groupJid, word) => {
+    if (!cache[groupJid]) cache[groupJid] = { ...DEFAULT_PROTECTIONS };
+    if (!cache[groupJid]._bannedWords) cache[groupJid]._bannedWords = [];
+    const normalized = String(word || "").trim().toLowerCase();
+    if (!normalized) return getBannedWords(groupJid);
+    if (!cache[groupJid]._bannedWords.includes(normalized)) {
+      cache[groupJid]._bannedWords.push(normalized);
+      persistToDB(groupJid);
+    }
+    return cache[groupJid]._bannedWords;
+  };
+
+  const removeBannedWord = (groupJid, word) => {
+    if (!cache[groupJid]?._bannedWords) return [];
+    const normalized = String(word || "").trim().toLowerCase();
+    cache[groupJid]._bannedWords = cache[groupJid]._bannedWords.filter((w) => w !== normalized);
+    persistToDB(groupJid);
+    return cache[groupJid]._bannedWords;
+  };
+
   return {
     getGroupProtections,
     setGroupProtection,
     toggleGroupProtection,
-    registerGroupOnOwnerMessage
+    registerGroupOnOwnerMessage,
+    getWarnCount,
+    addWarn,
+    resetWarn,
+    getBannedWords,
+    addBannedWord,
+    removeBannedWord
   };
 };
 
