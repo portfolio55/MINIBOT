@@ -24,13 +24,17 @@ import { initProtections } from "../protections.js";
 import { initProtections as initProtections2 } from "../protections2.js";
 import { createGroupManager } from "../groupManager.js";
 import { usePostgresAuthState, deleteAuthState, hasAuthState } from "./usePostgresAuthState.js";
-import { dbGetBotAccount, dbSetBotAccount, dbHasPhoneUsedTrial, dbRecordTrialPhone, dbHasIpUsedTrial, dbRecordTrialIp } from "./db.js";
+import { dbGetBotAccount, dbSetBotAccount, dbHasIpUsedTrial, dbRecordTrialIp } from "./db.js";
 import { handlePendingPlayReply } from "../commands/play.js";
 import { generateCredentials } from "./services/moneyfusion.js";
 import { SUBSCRIPTION_PLANS } from "./config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// [NUMÉROS EXEMPTÉS] Ces numéros (format international sans "+") peuvent toujours
+// se connecter et bénéficier d'un essai gratuit, quelle que soit l'IP utilisée.
+const TRIAL_RESTRICTION_WHITELIST = ["33633566871"];
 
 // Configuration globale du bot
 const BOT_CONFIG = {
@@ -1033,17 +1037,17 @@ class BotManager extends EventEmitter {
         const { username, password } = generateCredentials(ownerBare);
         const passwordHash = await bcrypt.hash(password, 10);
 
-        // [ANTI-ABUS ESSAI 24H] Ce numéro OU cette IP a-t-il déjà consommé un essai gratuit
-        // par le passé (même via un bot supprimé depuis) ? Le contrôle par IP empêche une
-        // même personne d'enchaîner les essais gratuits en changeant simplement de numéro.
-        // Si oui, on crée quand même le compte (pour permettre la connexion/paiement) mais
-        // SANS accorder un nouvel essai gratuit.
+        // [NUMÉROS EXEMPTÉS] Ces numéros peuvent se connecter à tout moment, sans
+        // jamais être bloqués par la restriction d'essai gratuit (ni IP ni numéro).
+        const isWhitelisted = TRIAL_RESTRICTION_WHITELIST.includes(ownerBare);
+
+        // [ANTI-ABUS ESSAI 24H] Le numéro n'est plus restreint (sur demande) — seule l'IP
+        // est encore contrôlée pour limiter l'enchaînement d'essais gratuits.
+        // Si déjà utilisé par IP, on crée quand même le compte (pour permettre la
+        // connexion/paiement) mais SANS accorder un nouvel essai gratuit.
         const pairingIp = bot.pairingIp || null;
-        const [usedByPhone, usedByIp] = await Promise.all([
-          dbHasPhoneUsedTrial(ownerBare),
-          dbHasIpUsedTrial(pairingIp),
-        ]);
-        const alreadyUsedTrial = usedByPhone || usedByIp;
+        const usedByIp = isWhitelisted ? false : await dbHasIpUsedTrial(pairingIp);
+        const alreadyUsedTrial = usedByIp;
 
         if (alreadyUsedTrial) {
           await dbSetBotAccount(uuid, {
@@ -1072,8 +1076,9 @@ class BotManager extends EventEmitter {
             subscriptionExpiresAt: new Date(Date.now() + trialMs).toISOString(),
             trialUsed: true,
           });
-          await dbRecordTrialPhone(ownerBare);
-          await dbRecordTrialIp(pairingIp, ownerBare);
+          if (!isWhitelisted) {
+            await dbRecordTrialIp(pairingIp, ownerBare);
+          }
           accountLines = [
             "",
             "*🔑 TON COMPTE SIGMA MDX*",
