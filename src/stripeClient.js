@@ -6,10 +6,23 @@ import Stripe from "stripe";
 import { StripeSync } from "stripe-replit-sync";
 
 /**
- * Récupère les identifiants Stripe depuis l'API de connexion Replit.
- * Pas de cache : les jetons peuvent tourner, on les récupère à chaque fois.
+ * Récupère les identifiants Stripe.
+ *
+ * Priorité 1 : STRIPE_SECRET_KEY_MANUAL (secret Replit) — si l'utilisateur a
+ * fourni sa propre clé via le gestionnaire de secrets sécurisé, on l'utilise
+ * directement et on ne passe pas par le connecteur intégré.
+ * Priorité 2 : l'intégration Replit connectée (connecteur Stripe).
+ * Pas de cache : les jetons/valeurs peuvent changer, on les relit à chaque fois.
  */
 async function getStripeCredentials() {
+  const manualKey = process.env.STRIPE_SECRET_KEY_MANUAL;
+  if (manualKey) {
+    return {
+      secretKey: manualKey,
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET_MANUAL || "",
+    };
+  }
+
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY
