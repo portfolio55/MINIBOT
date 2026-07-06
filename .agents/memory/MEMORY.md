@@ -6,3 +6,4 @@
 - [Silent command convention](silent-group-commands-convention.md) — success = ✅ reaction, error = plain text, never quote the command message; apply to new/edited commands.
 - [Interactive command reply interception](play-interactive-choice-pattern.md) — for prefix-less follow-up replies (e.g. "1"/"2" menus), intercept in botManager before prefix check, state owned by the command module.
 - [Health-check manual-stop flag](health-check-manual-stop-flag.md) — internal auto-restarts must pass stopBot(uuid, false) or the permanent manual-stop flag strands bots after a transient false alarm.
+- [Replit Stripe connector field names](replit-stripe-connector-field-names.md) — connector API returns `settings.secret`/`settings.publishable`, not `secret_key`/`publishable_key` as shown in the stripe skill template.

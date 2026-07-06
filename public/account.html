@@ -131,6 +131,9 @@
         }
         .plan-card button:hover:not(:disabled) { background: #4ee566; }
         .plan-card button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .plan-card button + button { margin-top: 8px; }
+        .plan-card button.stripe-btn { background: #635bff; color: #fff; }
+        .plan-card button.stripe-btn:hover:not(:disabled) { background: #7a73ff; }
         .alert {
             padding: 12px 13px;
             border-radius: var(--radius);
@@ -217,29 +220,49 @@
             alertDiv.className = `alert ${type} show`;
         }
 
+        let stripePlansAvailable = {};
+
+        async function loadStripePlans() {
+            try {
+                const response = await fetch('/api/stripe/plans');
+                const data = await response.json();
+                if (response.ok && Array.isArray(data.plans)) {
+                    stripePlansAvailable = Object.fromEntries(data.plans.map(p => [p.plan, true]));
+                }
+            } catch {
+                // Stripe optionnel — si indisponible, on affiche uniquement MoneyFusion
+            }
+        }
+
         function renderPlans() {
             const container = document.getElementById('plansContainer');
             container.innerHTML = '';
             for (const [key, price] of Object.entries(PLAN_PRICES)) {
                 const card = document.createElement('div');
                 card.className = 'plan-card';
+                const stripeButton = stripePlansAvailable[key]
+                    ? `<button data-plan="${key}" data-method="stripe" class="stripe-btn">payer par carte</button>`
+                    : '';
                 card.innerHTML = `
                     <h3>${PLAN_LABELS[key]}</h3>
                     <div class="price">${price} FCFA</div>
-                    <button data-plan="${key}">payer</button>
+                    <button data-plan="${key}" data-method="moneyfusion">mobile money</button>
+                    ${stripeButton}
                 `;
                 container.appendChild(card);
             }
             container.querySelectorAll('button').forEach(btn => {
-                btn.addEventListener('click', () => payPlan(btn.dataset.plan, btn));
+                btn.addEventListener('click', () => payPlan(btn.dataset.plan, btn, btn.dataset.method));
             });
         }
 
-        async function payPlan(plan, btn) {
+        async function payPlan(plan, btn, method) {
+            const originalText = btn.textContent;
             btn.disabled = true;
             btn.textContent = 'redirection...';
+            const endpoint = method === 'stripe' ? '/api/stripe/checkout' : '/api/payment/create';
             try {
-                const response = await fetch('/api/payment/create', {
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ plan })
@@ -250,7 +273,7 @@
             } catch (error) {
                 showAlert(`erreur : ${error.message}`, 'error');
                 btn.disabled = false;
-                btn.textContent = 'payer';
+                btn.textContent = originalText;
             }
         }
 
@@ -301,7 +324,7 @@
             window.location.href = '/login.html';
         });
 
-        renderPlans();
+        loadStripePlans().then(renderPlans);
         loadAccount();
         setInterval(loadAccount, 15000);
     </script>

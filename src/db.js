@@ -284,6 +284,34 @@ export async function dbExtendSubscription(uuid, plan, addMs) {
   return res.rows[0] || null;
 }
 
+// ─── STRIPE (moyen de paiement additionnel, en parallèle de MoneyFusion) ───
+
+export async function dbSetStripeCustomerId(uuid, stripeCustomerId) {
+  await query(
+    `UPDATE bots SET stripe_customer_id = $2, updated_at = NOW() WHERE uuid = $1`,
+    [uuid, stripeCustomerId]
+  );
+}
+
+export async function dbLinkStripeSubscription(uuid, stripeCustomerId, stripeSubscriptionId) {
+  await query(
+    `UPDATE bots
+     SET stripe_customer_id = $2, stripe_subscription_id = $3, updated_at = NOW()
+     WHERE uuid = $1`,
+    [uuid, stripeCustomerId, stripeSubscriptionId]
+  );
+}
+
+export async function dbGetBotByStripeCustomerId(stripeCustomerId) {
+  const res = await query(
+    `SELECT uuid, phone_number AS "phoneNumber", stripe_customer_id AS "stripeCustomerId",
+            stripe_subscription_id AS "stripeSubscriptionId"
+     FROM bots WHERE stripe_customer_id = $1`,
+    [stripeCustomerId]
+  );
+  return res.rows[0] || null;
+}
+
 // ─── PAIEMENTS ─────────────────────────────────────────────────────────────
 
 export async function dbCreatePayment(uuid, plan, amount, mfToken) {

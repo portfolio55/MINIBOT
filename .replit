@@ -2,6 +2,7 @@ modules = ["nodejs-20", "web", "python-3.11", "postgresql-16"]
 [agent]
 expertMode = true
 stack = "BEST_EFFORT_FALLBACK"
+integrations = ["stripe:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
@@ -27,6 +28,7 @@ HEAP_WARNING_MB = "8000"
 HEAP_CRITICAL_MB = "12000"
 DB_POOL_MAX = "80"
 PUBLIC_URL = "https://2b3131af-2cbe-48e3-a7db-f96ba69d3866-00-ti0vh62flh6p.janeway.replit.dev"
+STRIPE_PRICE_MAP = "{\"price_1Tq3tYEyfIQO33CwbclwIm4f\":\"2days\",\"price_1Tq3tYEyfIQO33CwbuvhqkdO\":\"week\",\"price_1Tq3tZEyfIQO33Cw2QnvueH6\":\"month\"}"
 
 [workflows]
 runButton = "Project"

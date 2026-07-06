@@ -99,6 +99,20 @@ export const config = {
   },
 };
 
+// [STRIPE] Correspondance price_id Stripe -> clé de plan SUBSCRIPTION_PLANS.
+// Remplie automatiquement au démarrage par scripts/seed-stripe-products.js,
+// ou renseignable manuellement via la variable d'environnement STRIPE_PRICE_MAP
+// au format JSON: {"price_xxx":"month","price_yyy":"week"}
+export const STRIPE_PRICE_TO_PLAN = (() => {
+  const raw = getString("STRIPE_PRICE_MAP", "");
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+})();
+
 // Plans d'abonnement (durée en ms, prix en FCFA)
 export const SUBSCRIPTION_PLANS = {
   trial:  { label: "Essai gratuit",  price: 0,    durationMs: 24 * 60 * 60 * 1000 },

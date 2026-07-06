@@ -17,6 +17,9 @@ import cookieParser from "cookie-parser";
 import botManager from "./botManager.js";
 import authRouter from "./routes/auth.js";
 import paymentRouter from "./routes/payment.js";
+import stripeRouter, { mountStripeWebhook } from "./routes/stripe.js";
+import { runMigrations } from "stripe-replit-sync";
+import { getStripeSync } from "./stripeClient.js";
 import { dbGetExpiredSubscriptions, dbExtendSubscription } from "./db.js";
 import config, { SUBSCRIPTION_PLANS } from "./config.js";
 import {
@@ -110,6 +113,10 @@ applySecurityMiddleware(app, {
   trustProxy: !!process.env.TRUST_PROXY,
 });
 
+// [STRIPE] La route webhook DOIT être montée AVANT express.json() car elle a besoin
+// du corps brut (Buffer) pour vérifier la signature Stripe.
+mountStripeWebhook(app);
+
 // Middleware de base
 app.use(express.json({ limit: "1mb" })); // Limiter la taille du body
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
@@ -131,6 +138,7 @@ app.use(express.static(path.join(__dirname, "..", "public"), {
 // ─── Comptes utilisateurs / abonnements ──────────────────────────────────
 app.use(authRouter);
 app.use(paymentRouter);
+app.use(stripeRouter);
 
 // [ABONNEMENTS] Déconnexion automatique des bots dont l'abonnement a expiré
 const subscriptionCheckInterval = setInterval(async () => {
@@ -674,6 +682,43 @@ app.get("/:token", async (req, res) => {
   `);
 });
 
+// [STRIPE] Initialise le schéma stripe.* dans Postgres, enregistre le webhook managé
+// et synchronise les données existantes. Ne bloque jamais le démarrage du serveur —
+// MoneyFusion doit continuer de fonctionner même si Stripe est indisponible.
+async function initStripe() {
+  const databaseUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    logger.warn("[Stripe] Aucune base de données configurée — intégration Stripe désactivée");
+    return;
+  }
+  try {
+    logger.info("[Stripe] Initialisation du schéma...");
+    await runMigrations({ databaseUrl, schema: "stripe" });
+    logger.info("[Stripe] Schéma prêt");
+
+    const stripeSync = await getStripeSync();
+    const publicBase =
+      normalizePublicUrl(PUBLIC_URL) ||
+      normalizePublicUrl(DOMAIN) ||
+      (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}` : null);
+
+    if (publicBase) {
+      logger.info("[Stripe] Configuration du webhook managé...");
+      const webhookResult = await stripeSync.findOrCreateManagedWebhook(`${publicBase}/api/stripe/webhook`);
+      logger.info(`[Stripe] Webhook configuré: ${JSON.stringify(webhookResult?.webhook?.url || "ok")}`);
+    } else {
+      logger.warn("[Stripe] URL publique inconnue — webhook managé non configuré automatiquement");
+    }
+
+    stripeSync
+      .syncBackfill()
+      .then(() => logger.info("[Stripe] Synchronisation des données terminée"))
+      .catch((err) => logger.error(`[Stripe] Erreur de synchronisation: ${err.message}`));
+  } catch (err) {
+    logger.error(`[Stripe] Échec d'initialisation (l'app continue sans Stripe): ${err.message}`);
+  }
+}
+
 // Démarrer le serveur
 httpServer.listen(PORT, HOST, async () => {
   const displayUrl =
@@ -693,6 +738,9 @@ httpServer.listen(PORT, HOST, async () => {
 
   // Démarrer les tâches de surveillance h24
   botManager.startBackgroundTasks();
+
+  // [STRIPE] Initialisation non bloquante — l'app fonctionne normalement même si ça échoue
+  initStripe();
 });
 
 // Fonction pour reconnecter automatiquement les bots existants
