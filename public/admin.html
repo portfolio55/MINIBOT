@@ -807,16 +807,16 @@ function renderBotsTable(bots) {
             <td>${created}</td>
             <td>
                 <div class="action-group">
-                    <button class="btn-a s"  onclick="adminAction('${bot.uuid}','start')">▶</button>
-                    <button class="btn-a st" onclick="adminAction('${bot.uuid}','stop')">■</button>
-                    <button class="btn-a r"  onclick="adminAction('${bot.uuid}','restart')">↻</button>
-                    <button class="btn-a d"  onclick="adminAction('${bot.uuid}','delete')">✕</button>
+                    <button class="btn-a s"  data-act="start"   data-uuid="${bot.uuid}">▶</button>
+                    <button class="btn-a st" data-act="stop"    data-uuid="${bot.uuid}">■</button>
+                    <button class="btn-a r"  data-act="restart" data-uuid="${bot.uuid}">↻</button>
+                    <button class="btn-a d"  data-act="delete"  data-uuid="${bot.uuid}">✕</button>
                     <select class="plan-sel" id="plan-${bot.uuid}">
                         <option value="2days">2j / 500F</option>
                         <option value="week">7j / 1000F</option>
                         <option value="month">30j / 3000F</option>
                     </select>
-                    <button class="btn-a ex" onclick="extendSub('${bot.uuid}')">+sub</button>
+                    <button class="btn-a ex" data-act="extend" data-uuid="${bot.uuid}" data-sel="plan-${bot.uuid}">+sub</button>
                 </div>
             </td>
         `;
@@ -857,7 +857,7 @@ function renderSubTable(bots, now) {
                         <option value="week">7j</option>
                         <option value="month">30j</option>
                     </select>
-                    <button class="btn-a ex" onclick="extendSubFromSel('${bot.uuid}','subplan-${bot.uuid}')">+sub</button>
+                    <button class="btn-a ex" data-act="extend" data-uuid="${bot.uuid}" data-sel="subplan-${bot.uuid}">+sub</button>
                 </div>
             </td>
         `;
@@ -964,6 +964,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('searchInput');
     if (searchInput) searchInput.addEventListener('input', function () {
         filterTable(this.value);
+    });
+
+    // Délégation d'événements pour les boutons d'action des tableaux
+    // (les onclick inline sont bloqués par la CSP — on écoute au niveau document)
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        const uuid = btn.getAttribute('data-uuid');
+        const act  = btn.getAttribute('data-act');
+        if (!uuid || !act) return;
+        if (act === 'extend') {
+            const selId = btn.getAttribute('data-sel');
+            const sel = selId ? document.getElementById(selId) : null;
+            doExtend(uuid, sel ? sel.value : '2days');
+        } else {
+            adminAction(uuid, act);
+        }
     });
 });
 </script>
