@@ -1504,7 +1504,11 @@ class BotManager extends EventEmitter {
   async stopBot(uuid, manual = true) {
     const bot = this.bots.get(uuid);
     if (!bot) {
-      throw new Error(`Bot ${uuid} introuvable`);
+      // [FIX ADMIN] Bot pas en mémoire (ex: jamais démarré depuis le restart
+      // serveur) — on marque simplement "stopped" en DB au lieu de planter.
+      logger.info(`stopBot ${uuid}: pas en mémoire, statut DB → stopped`);
+      await updateBotStatus(uuid, "stopped");
+      return;
     }
 
     if (manual) {
@@ -1609,17 +1613,21 @@ class BotManager extends EventEmitter {
    */
   async deleteBot(uuid) {
     const bot = this.bots.get(uuid);
-    if (!bot) {
-      throw new Error(`Bot ${uuid} introuvable`);
+
+    if (bot) {
+      await this.stopBot(uuid);
+      this.pairingLocks.delete(bot.phoneNumber);
+      this.bots.delete(uuid);
+    } else {
+      // [FIX ADMIN] Bot pas en mémoire — on nettoie quand même la session
+      // (auth DB + dossier disque) pour que la suppression admin fonctionne.
+      logger.info(`deleteBot ${uuid}: pas en mémoire, nettoyage session directement`);
     }
 
-    await this.stopBot(uuid);
-    this.pairingLocks.delete(bot.phoneNumber);
-    this.bots.delete(uuid);
-
+    const sessionPath = bot?.sessionPath || path.join(__dirname, "..", "sessions", `bot_${uuid}`);
     try {
       await deleteAuthState(uuid);
-      await fs.remove(bot.sessionPath);
+      await fs.remove(sessionPath);
       logger.info(`Session supprimée pour ${uuid}`);
     } catch (e) {
       logger.error(`Erreur suppression session ${uuid}: ${e.message}`);
