@@ -1,69 +1,77 @@
+import fs from "fs";
+import path from "path";
 import axios from "axios";
 
-export const name = "SIGMA MDX";
+export const name = "sigma";
 
-export async function execute(sock, msg, args) {
+const DEFAULT_IMAGE = "https://files.catbox.moe/as264g.jpg";
+
+function configPath(botContext) {
+  const sessionPath = botContext?.sessionPath;
+  return sessionPath
+    ? path.join(sessionPath, "sigma.json")
+    : path.join(process.cwd(), "sigma.json");
+}
+
+function loadConfig(botContext) {
+  try {
+    const p = configPath(botContext);
+    if (fs.existsSync(p)) {
+      return JSON.parse(fs.readFileSync(p, "utf8"));
+    }
+  } catch {}
+  return { image: DEFAULT_IMAGE, text: "" };
+}
+
+function saveConfig(botContext, config) {
+  fs.writeFileSync(configPath(botContext), JSON.stringify(config, null, 2));
+}
+
+async function downloadImage(url) {
+  const res = await axios.get(url, { responseType: "arraybuffer", timeout: 30000 });
+  return Buffer.from(res.data);
+}
+
+export async function execute(sock, m, args, from, botContext) {
+  const jid = m.key.remoteJid;
 
   try {
+    // ── Configuration : .sigma <texte> <lien_image> ──────────────
+    if (args.length > 0) {
+      const urlIndex = args.findIndex(a => /^https?:\/\//i.test(a));
+      const imageUrl = urlIndex >= 0 ? args[urlIndex] : null;
+      const text = args.filter((_, i) => i !== urlIndex).join(" ").trim();
 
-    const from = msg.key.remoteJid;
+      const config = loadConfig(botContext);
 
-    const query = args.join(" ");
+      if (imageUrl) {
+        // Vérifier que le lien est bien accessible avant de le sauvegarder
+        try {
+          const buf = await downloadImage(imageUrl);
+          if (!buf || buf.length === 0) throw new Error("image vide");
+          config.image = imageUrl;
+        } catch {
+          await sock.sendMessage(jid, { text: "❌ Lien d'image invalide ou inaccessible." });
+          return;
+        }
+      }
+      if (text) config.text = text;
+      saveConfig(botContext, config);
 
-    // Vérification si une question est posée
-
-    if (!query) {
-
-      await sock.sendMessage(from, {
-
-        text: `> SIGMA MDX DEPLOY : *Usage incorrect...
-
-> Exemple : .SIGMA MDX combien de continent compte la Terre? ?`
-
-      }, { quoted: msg });
-
+      // Convention : succès = réaction ✅ (pas de message qui cite la commande)
+      await sock.sendMessage(jid, { react: { text: "✅", key: m.key } });
       return;
-
     }
 
-    // Message déattente
-
-    const sentMsg = await sock.sendMessage(from, {
-
-      text: "> SIGMA MDX DEPLOY : ⚡'⚡ 🎨🎨🎨?....🎨🎨?? ⚡"
-
-    }, { quoted: msg });
-
-    // Appel API
-
-    const apiUrl = `https://apis.davidcyriltech.my.id/ai/chatbot?query=${encodeURIComponent(query)}`;
-
-    const { data } = await axios.get(apiUrl);
-
-    if (!data.success || !data.result) {
-
-      throw new Error("Aucune réponse obtenue.");
-
-    }
-
-    // Réponse stylisée
-
-    const reply = `> SIGMA MDX MD :
-
--Reponse: ${data.result}`;
-
-    await sock.sendMessage(from, { text: reply }, { quoted: sentMsg });
-
-  } catch (err) {
-
-    console.error("? Erreur commande hades :", err);
-
-    await sock.sendMessage(msg.key.remoteJid, {
-
-      text: `> SIGMA MDX DEPLOY:❌ Erreur : ${err.message}`
-
-    }, { quoted: msg });
-
+    // ── Envoi : .sigma (sans argument) ────────────────────────────
+    const config = loadConfig(botContext);
+    const buffer = await downloadImage(config.image || DEFAULT_IMAGE);
+    await sock.sendMessage(jid, {
+      image: buffer,
+      caption: config.text || ""
+    });
+  } catch (e) {
+    console.error("sigma error:", e);
+    await sock.sendMessage(jid, { text: "❌ Erreur: " + e.message });
   }
-
 }
