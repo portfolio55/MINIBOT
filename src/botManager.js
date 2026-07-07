@@ -519,6 +519,11 @@ class BotManager extends EventEmitter {
       bot.connectingWatchdog = null;
     }
 
+    if (bot._presenceKeepaliveTimer) {
+      clearInterval(bot._presenceKeepaliveTimer);
+      bot._presenceKeepaliveTimer = null;
+    }
+
     if (bot.socket) {
       try {
         if (bot.socket.ev) {
@@ -881,16 +886,19 @@ class BotManager extends EventEmitter {
         // bot comme "en ligne" auprès des contacts.
         if (bot._presenceKeepaliveTimer) clearInterval(bot._presenceKeepaliveTimer);
         const presenceIntervalMs = parseInt(process.env.PRESENCE_KEEPALIVE_MS || "480000"); // 8 min
-        bot._presenceKeepaliveTimer = setInterval(async () => {
+        const presenceTimerId = setInterval(async () => {
           try {
             const b = this.bots.get(uuid);
-            if (!b || !b.socket || b.status !== "connected") {
-              clearInterval(b?._presenceKeepaliveTimer);
+            // Auto-nettoyage : si le bot a été supprimé/déconnecté, on stoppe
+            // CE timer par son propre id (pas via le map, qui peut être vide)
+            if (!b || !b.socket || b.status !== "connected" || b._presenceKeepaliveTimer !== presenceTimerId) {
+              clearInterval(presenceTimerId);
               return;
             }
             await b.socket.sendPresenceUpdate("unavailable");
           } catch (_) {}
         }, presenceIntervalMs);
+        bot._presenceKeepaliveTimer = presenceTimerId;
 
         this.emit("bot-connected", { uuid });
       }
