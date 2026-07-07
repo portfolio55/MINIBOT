@@ -3,269 +3,565 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>SIGMA MDX DEPLOY — admin</title>
+    <title>SIGMA MDX — admin</title>
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
     <meta name="theme-color" content="#0a0d0f">
     <style>
         :root {
-            --bg: #0a0d0f;
-            --panel: #12171a;
-            --panel-2: #171d21;
-            --border: #232a2e;
-            --text: #d9dfe2;
-            --muted: #7a8790;
-            --accent: #39d353;
+            --bg:         #0a0d0f;
+            --panel:      #12171a;
+            --panel-2:    #171d21;
+            --border:     #232a2e;
+            --text:       #d9dfe2;
+            --muted:      #7a8790;
+            --accent:     #39d353;
             --accent-dim: #26a641;
-            --warn: #ffbd2e;
-            --danger: #ff5f56;
-            --mono: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, 'Courier New', monospace;
+            --warn:       #ffbd2e;
+            --danger:     #ff5f56;
+            --info:       #58a6ff;
+            --sidebar-w:  240px;
+            --topbar-h:   52px;
+            --mono: 'JetBrains Mono','Fira Code','SFMono-Regular',Consolas,'Courier New',monospace;
             --radius: 6px;
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
         body {
             font-family: var(--mono);
             background: var(--bg);
             background-image:
-                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+                linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
             background-size: 28px 28px;
             color: var(--text);
             min-height: 100vh;
-            padding: 32px 16px;
         }
 
-        .term {
-            max-width: 1180px;
-            margin: 0 auto;
+        /* ── AUTH SCREEN ─────────────────────────────────── */
+        .auth-screen {
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .auth-box {
+            width: 100%; max-width: 380px;
             background: var(--panel);
             border: 1px solid var(--border);
             border-radius: 8px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
             overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,.5);
         }
-        .term-bar {
-            display: flex; align-items: center; gap: 8px;
+        .auth-bar {
+            display: flex; align-items: center; gap: 6px;
             padding: 10px 14px;
-            background: var(--panel-2);
+            background: var(--panel-2); border-bottom: 1px solid var(--border);
+        }
+        .auth-bar .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .auth-bar .dot.r { background: var(--danger); }
+        .auth-bar .dot.y { background: var(--warn); }
+        .auth-bar .dot.g { background: var(--accent-dim); }
+        .auth-bar span { font-size: 12px; color: var(--muted); margin-left: 6px; }
+        .auth-body { padding: 28px; }
+        .auth-brand {
+            width: 44px; height: 44px; margin: 0 auto 14px;
+            border-radius: 8px; background: var(--panel-2);
+            border: 1px solid var(--danger);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 700; color: var(--danger);
+        }
+        .auth-title { text-align: center; font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+        .auth-title::before { content: "Σ "; color: var(--danger); }
+        .auth-sub { text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 22px; }
+        .auth-body input {
+            width: 100%; padding: 11px 13px; margin-bottom: 12px;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: var(--radius); color: var(--text);
+            font-size: 13px; font-family: var(--mono);
+        }
+        .auth-body input:focus { outline: none; border-color: var(--accent); }
+        .auth-body button {
+            width: 100%; padding: 12px;
+            background: var(--accent); color: #04120a;
+            border: none; border-radius: var(--radius);
+            font-size: 14px; font-weight: 700; font-family: var(--mono); cursor: pointer;
+        }
+        .auth-body button:hover { background: #4ee566; }
+
+        /* ── DASHBOARD LAYOUT ────────────────────────────── */
+        .dashboard { display: flex; min-height: 100vh; }
+        .dashboard.hidden { display: none; }
+
+        /* ── OVERLAY ─────────────────────────────────────── */
+        .overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.55); z-index: 99;
+            backdrop-filter: blur(2px);
+        }
+        .overlay.open { display: block; }
+
+        /* ── SIDEBAR ─────────────────────────────────────── */
+        .sidebar {
+            position: fixed; top: 0; left: 0;
+            width: var(--sidebar-w); height: 100vh;
+            background: var(--panel); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            z-index: 100;
+            transition: transform .25s cubic-bezier(.4,0,.2,1);
+        }
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); box-shadow: 8px 0 40px rgba(0,0,0,.6); }
+        }
+
+        .sb-brand {
+            display: flex; align-items: center; gap: 10px;
+            padding: 18px 16px 16px;
             border-bottom: 1px solid var(--border);
         }
-        .term-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .term-dot.r { background: var(--danger); }
-        .term-dot.y { background: var(--warn); }
-        .term-dot.g { background: var(--accent-dim); }
-        .term-title { margin-left: 8px; font-size: 12px; color: var(--muted); }
-        .term-body { padding: 28px; overflow-x: hidden; }
-        @media (max-width: 480px) { .term-body { padding: 18px 14px; } }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 6px;
-            font-size: 17px;
-            font-weight: 700;
+        .sb-icon {
+            width: 34px; height: 34px; border-radius: 6px; flex-shrink: 0;
+            background: rgba(255,95,86,.1); border: 1px solid var(--danger);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px; font-weight: 700; color: var(--danger);
         }
-        h1::before { content: "Σ "; color: var(--accent); }
+        .sb-brand-name { font-size: 12.5px; font-weight: 700; }
+        .sb-brand-sub  { font-size: 10px; color: var(--muted); margin-top: 1px; }
 
-        .subtitle {
-            text-align: center;
-            color: var(--muted);
-            margin-bottom: 26px;
-            font-size: 12.5px;
+        .sb-live {
+            padding: 10px 16px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 8px; font-size: 11px;
         }
-
-        .auth-form {
-            max-width: 380px;
-            margin: 0 auto 26px;
-            padding: 18px;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
+        .live-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--accent); animation: pulse 1.8s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(57,211,83,.6); }
+            50%      { box-shadow: 0 0 0 5px rgba(57,211,83,0); }
         }
 
-        .auth-form input {
-            width: 100%;
-            padding: 11px 13px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            font-size: 14px;
-            margin-bottom: 14px;
-            background: var(--panel-2);
-            color: var(--text);
-            font-family: var(--mono);
+        .sb-nav { flex: 1; padding: 10px 0; overflow-y: auto; }
+        .sb-label {
+            padding: 12px 16px 3px;
+            font-size: 10px; color: var(--border);
+            text-transform: uppercase; letter-spacing: .08em;
         }
-        .auth-form input:focus { outline: none; border-color: var(--accent); }
-
-        .auth-form button {
-            width: 100%;
-            padding: 12px;
-            background: var(--accent);
-            color: #04120a;
-            border: none;
-            border-radius: var(--radius);
-            font-size: 14px;
-            font-weight: 700;
-            font-family: var(--mono);
-            cursor: pointer;
+        .nav-btn {
+            display: flex; align-items: center; gap: 9px;
+            padding: 10px 16px; width: 100%;
+            font-size: 12.5px; font-weight: 700; color: var(--muted);
+            background: none; border: none; border-left: 2px solid transparent;
+            font-family: var(--mono); cursor: pointer; text-align: left;
+            transition: color .15s, background .15s, border-color .15s;
         }
-        .auth-form button:hover { background: #4ee566; }
+        .nav-btn:hover  { color: var(--text); background: rgba(255,255,255,.04); }
+        .nav-btn.active { color: var(--accent); background: rgba(57,211,83,.07); border-left-color: var(--accent); }
+        .nav-btn .ico   { width: 18px; text-align: center; font-size: 14px; }
 
-        .admin-panel { display: none; }
-        .admin-panel.active { display: block; }
+        /* mini stats in sidebar */
+        .sb-stats {
+            padding: 12px 16px; border-top: 1px solid var(--border);
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+        }
+        .sb-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px; text-align: center; }
+        .sb-stat .val { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1; }
+        .sb-stat .lbl { font-size: 9px; color: var(--muted); margin-top: 2px; }
 
-        .stats {
+        .sb-footer {
+            padding: 12px 16px; border-top: 1px solid var(--border);
+        }
+        .sb-footer-info { font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+        .btn-lock {
+            display: flex; align-items: center; gap: 7px; width: 100%;
+            padding: 8px 10px; background: transparent; border: 1px solid var(--border);
+            border-radius: var(--radius); color: var(--muted);
+            font-size: 11.5px; font-weight: 700; font-family: var(--mono); cursor: pointer;
+            transition: color .15s, border-color .15s;
+        }
+        .btn-lock:hover { color: var(--danger); border-color: var(--danger); }
+
+        /* ── TOPBAR MOBILE ───────────────────────────────── */
+        .topbar {
+            display: none; position: fixed; top: 0; left: 0; right: 0;
+            height: var(--topbar-h); background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            align-items: center; justify-content: space-between;
+            padding: 0 14px; z-index: 98;
+        }
+        @media (max-width: 900px) { .topbar { display: flex; } }
+        .hamburger {
+            display: flex; flex-direction: column; gap: 4px;
+            width: 28px; height: 28px; justify-content: center;
+            background: none; border: none; cursor: pointer; padding: 2px;
+        }
+        .hamburger span {
+            display: block; height: 2px; border-radius: 2px;
+            background: var(--text); transition: transform .2s, opacity .2s;
+        }
+        .hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+        .hamburger.open span:nth-child(2) { opacity: 0; }
+        .hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+        .topbar-center { font-size: 13px; font-weight: 700; }
+        .topbar-center span { color: var(--danger); }
+        .topbar-right { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+        .topbar-right .live-dot { animation: pulse 1.8s ease-in-out infinite; }
+
+        /* ── MAIN ────────────────────────────────────────── */
+        .main {
+            margin-left: var(--sidebar-w); flex: 1;
+            padding: 28px; display: flex; flex-direction: column; gap: 22px;
+            max-width: calc(100vw - var(--sidebar-w));
+        }
+        @media (max-width: 900px) {
+            .main { margin-left: 0; padding: 14px; padding-top: calc(var(--topbar-h) + 14px); max-width: 100vw; }
+        }
+
+        /* Section routing */
+        .section { display: none; flex-direction: column; gap: 20px; }
+        .section.active { display: flex; }
+
+        .section-head {
+            font-size: 15px; font-weight: 700; margin-bottom: 2px;
+        }
+        .section-head::before { content: "Σ "; color: var(--accent); }
+        .section-sub { font-size: 11.5px; color: var(--muted); }
+
+        /* ── ALERT ───────────────────────────────────────── */
+        .alert {
+            padding: 11px 13px; border-radius: var(--radius); border: 1px solid;
+            font-size: 12.5px; display: none;
+        }
+        .alert.show    { display: block; }
+        .alert.success { background: rgba(57,211,83,.08); color: var(--accent); border-color: var(--accent-dim); }
+        .alert.error   { background: rgba(255,95,86,.08); color: var(--danger); border-color: var(--danger); }
+        .alert.info    { background: rgba(88,166,255,.08); color: var(--info);   border-color: var(--info); }
+
+        /* ── STAT CARDS ──────────────────────────────────── */
+        .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
-            margin-bottom: 26px;
+            gap: 12px;
         }
-        @media (max-width: 700px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 480px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
 
         .stat-card {
-            background: var(--bg);
-            border: 1px solid var(--border);
+            background: var(--panel); border: 1px solid var(--border);
             border-top: 3px solid var(--accent-dim);
-            border-radius: var(--radius);
-            padding: 16px;
-            text-align: center;
+            border-radius: var(--radius); padding: 16px; text-align: center;
         }
+        .stat-card.warn   { border-top-color: var(--warn); }
+        .stat-card.danger { border-top-color: var(--danger); }
+        .stat-card.info   { border-top-color: var(--info); }
 
-        .stat-value { font-size: 26px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-        .stat-label { font-size: 11.5px; color: var(--muted); }
+        .stat-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+        .stat-label { font-size: 11px; color: var(--muted); }
 
-        .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+        /* ── BOTS TABLE ──────────────────────────────────── */
+        .table-wrap {
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: var(--radius); overflow: hidden;
+        }
+        .table-toolbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 10px; flex-wrap: wrap;
+        }
+        .table-toolbar-left { font-size: 12px; color: var(--muted); }
+        .table-toolbar-left strong { color: var(--text); }
+        .search-input {
+            padding: 7px 11px;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: var(--radius); color: var(--text); font-family: var(--mono);
+            font-size: 12px; width: 200px; max-width: 100%;
+        }
+        .search-input:focus { outline: none; border-color: var(--accent); }
 
+        .table-scroll { overflow-x: auto; }
         .bots-table {
-            width: 100%;
-            min-width: 900px;
-            border-collapse: collapse;
-            font-size: 12.5px;
+            width: 100%; min-width: 960px;
+            border-collapse: collapse; font-size: 12px;
         }
-
         .bots-table th, .bots-table td {
-            padding: 10px 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-            white-space: nowrap;
+            padding: 10px 12px; text-align: left;
+            border-bottom: 1px solid var(--border); white-space: nowrap;
         }
-
         .bots-table th {
-            background: var(--panel-2);
-            font-weight: 700;
-            color: var(--muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
+            background: var(--panel-2); color: var(--muted);
+            font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+            font-weight: 700; position: sticky; top: 0;
         }
+        .bots-table tr:hover td { background: rgba(255,255,255,.02); }
+        .bots-table td.uuid-cell { font-size: 10.5px; color: var(--muted); font-family: monospace; }
+        .bots-table td.token-cell { font-size: 10.5px; color: var(--muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
 
-        .bots-table tr:hover { background: var(--panel-2); }
-
-        .status-badge {
-            display: inline-block;
-            padding: 3px 9px;
-            border-radius: 4px;
-            font-size: 10.5px;
-            border: 1px solid;
+        /* ── STATUS BADGE ────────────────────────────────── */
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 3px;
+            font-size: 10.5px; border: 1px solid;
         }
+        .badge.connected   { color: var(--accent); border-color: var(--accent-dim); background: rgba(57,211,83,.08); }
+        .badge.disconnected,
+        .badge.error,
+        .badge.logged_out  { color: var(--danger); border-color: var(--danger); background: rgba(255,95,86,.08); }
+        .badge.pairing,
+        .badge.connecting  { color: var(--warn);   border-color: var(--warn);   background: rgba(255,189,46,.08); }
+        .badge.stopped     { color: var(--muted);  border-color: var(--border);  background: var(--panel-2); }
+        .badge.trial       { color: var(--info);   border-color: var(--info);    background: rgba(88,166,255,.08); }
+        .badge.active      { color: var(--accent); border-color: var(--accent-dim); background: rgba(57,211,83,.08); }
+        .badge.expired     { color: var(--danger); border-color: var(--danger); background: rgba(255,95,86,.08); }
 
-        .status-badge.connected { color: var(--accent); border-color: var(--accent-dim); background: rgba(57,211,83,0.08); }
-        .status-badge.disconnected { color: var(--danger); border-color: var(--danger); background: rgba(255,95,86,0.08); }
-        .status-badge.pairing { color: var(--warn); border-color: var(--warn); background: rgba(255,189,46,0.08); }
-        .status-badge.stopped { color: var(--muted); border-color: var(--border); background: var(--panel); }
-
-        .action-buttons { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; }
-
-        .btn-action {
-            padding: 6px 10px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            font-size: 11px;
-            cursor: pointer;
-            font-weight: 700;
-            font-family: var(--mono);
-            background: var(--bg);
-            color: var(--text);
+        /* ── ACTION BUTTONS ──────────────────────────────── */
+        .action-group { display: flex; gap: 4px; align-items: center; }
+        .btn-a {
+            padding: 5px 9px; border: 1px solid var(--border);
+            border-radius: 4px; font-size: 10.5px; font-weight: 700;
+            font-family: var(--mono); cursor: pointer; background: var(--bg); color: var(--text);
+            transition: opacity .15s;
         }
+        .btn-a:hover:not(:disabled) { opacity: .75; }
+        .btn-a:disabled { opacity: .4; cursor: not-allowed; }
+        .btn-a.s  { border-color: var(--accent-dim); color: var(--accent); }
+        .btn-a.st { border-color: var(--danger);      color: var(--danger); }
+        .btn-a.r  { border-color: var(--warn);        color: var(--warn); }
+        .btn-a.d  { border-color: var(--border);      color: var(--muted); }
+        .btn-a.ex { border-color: var(--info);        color: var(--info); }
 
-        .btn-start { border-color: var(--accent-dim); color: var(--accent); }
-        .btn-stop { border-color: var(--danger); color: var(--danger); }
-        .btn-restart { border-color: var(--warn); color: var(--warn); }
-        .btn-delete { border-color: var(--border); color: var(--muted); }
-
-        select {
-            font-size: 11px;
-            padding: 5px;
-            background: var(--bg);
-            color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 4px;
+        select.plan-sel {
+            font-size: 10.5px; padding: 4px 6px;
+            background: var(--bg); color: var(--text);
+            border: 1px solid var(--border); border-radius: 4px;
             font-family: var(--mono);
         }
 
-        .alert {
-            padding: 12px 13px;
-            border-radius: var(--radius);
-            margin-bottom: 20px;
-            display: none;
-            font-size: 12.5px;
-            border: 1px solid;
+        /* ── CAPACITY BAR ────────────────────────────────── */
+        .cap-bar-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+        .cap-bar-head { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px; }
+        .cap-bar-head span { color: var(--muted); }
+        .cap-bar-head strong { color: var(--text); }
+        .cap-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+        .cap-bar-fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width .4s ease; }
+
+        /* ── PLAN DISTRIBUTION ───────────────────────────── */
+        .dist-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        @media (max-width: 600px) { .dist-grid { grid-template-columns: repeat(2, 1fr); } }
+        .dist-card {
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 14px; text-align: center;
+        }
+        .dist-card .dval { font-size: 22px; font-weight: 700; color: var(--text); }
+        .dist-card .dlbl { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+        /* ── SPINNER ─────────────────────────────────────── */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin {
+            display: inline-block; width: 11px; height: 11px;
+            border: 2px solid rgba(255,255,255,.2); border-radius: 50%;
+            border-top-color: currentColor; animation: spin .7s linear infinite; margin-right: 4px;
         }
 
-        .alert.show { display: block; }
-        .alert.success { background: rgba(57,211,83,0.08); color: var(--accent); border-color: var(--accent-dim); }
-        .alert.error { background: rgba(255,95,86,0.08); color: var(--danger); border-color: var(--danger); }
-
-        .token-cell {
-            font-size: 11px;
-            max-width: 180px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color: var(--muted);
+        /* ── REFRESH BUTTON ──────────────────────────────── */
+        .btn-refresh {
+            padding: 7px 12px; background: transparent;
+            border: 1px solid var(--border); border-radius: var(--radius);
+            color: var(--muted); font-size: 11.5px; font-weight: 700;
+            font-family: var(--mono); cursor: pointer; display: flex; align-items: center; gap: 5px;
+            transition: color .15s, border-color .15s;
         }
+        .btn-refresh:hover { color: var(--accent); border-color: var(--accent-dim); }
+        .btn-refresh.spinning .refresh-ico { animation: spin .7s linear infinite; }
     </style>
 </head>
 <body>
-    <div class="term">
-        <div class="term-bar">
-            <span class="term-dot r"></span>
-            <span class="term-dot y"></span>
-            <span class="term-dot g"></span>
-            <span class="term-title">admin.sh</span>
+
+<!-- ══ AUTH SCREEN ══════════════════════════════════════════ -->
+<div class="auth-screen" id="authScreen">
+    <div class="auth-box">
+        <div class="auth-bar">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span>admin.sh</span>
         </div>
-        <div class="term-body">
-            <h1>sigma-mdx deploy</h1>
-            <p class="subtitle">panneau d'administration</p>
+        <div class="auth-body">
+            <div class="auth-brand">⚡</div>
+            <div class="auth-title">sigma-mdx admin</div>
+            <p class="auth-sub">accès restreint — panneau d'administration</p>
+            <div class="alert" id="authAlert"></div>
+            <input type="password" id="adminPassword" placeholder="mot de passe admin"
+                   autocomplete="off" onkeydown="if(event.key==='Enter')authenticate()">
+            <button onclick="authenticate()">accéder au panneau</button>
+        </div>
+    </div>
+</div>
 
-            <div class="alert" id="alert"></div>
+<!-- ══ DASHBOARD ════════════════════════════════════════════ -->
+<div class="dashboard hidden" id="dashboard">
 
-            <div class="auth-form" id="authForm">
-                <input type="password" id="adminPassword" placeholder="mot de passe admin" autocomplete="off">
-                <button onclick="authenticate()">se connecter</button>
+    <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sb-brand">
+            <div class="sb-icon">⚡</div>
+            <div>
+                <div class="sb-brand-name">SIGMA MDX</div>
+                <div class="sb-brand-sub">admin panel</div>
+            </div>
+        </div>
+
+        <div class="sb-live">
+            <span class="live-dot"></span>
+            <span style="color:var(--muted)">auto-refresh</span>
+            <span style="color:var(--accent)">30s</span>
+        </div>
+
+        <nav class="sb-nav">
+            <div class="sb-label">navigation</div>
+            <button class="nav-btn active" data-sec="overview" onclick="showSection('overview')">
+                <span class="ico">📊</span> vue d'ensemble
+            </button>
+            <button class="nav-btn" data-sec="bots" onclick="showSection('bots')">
+                <span class="ico">🤖</span> liste des bots
+            </button>
+            <button class="nav-btn" data-sec="abonnements" onclick="showSection('abonnements')">
+                <span class="ico">💳</span> abonnements
+            </button>
+        </nav>
+
+        <div class="sb-stats">
+            <div class="sb-stat">
+                <div class="val" id="sbConnected" style="color:var(--accent)">0</div>
+                <div class="lbl">connectés</div>
+            </div>
+            <div class="sb-stat">
+                <div class="val" id="sbTotal">0</div>
+                <div class="lbl">total bots</div>
+            </div>
+            <div class="sb-stat">
+                <div class="val" id="sbCapacity" style="color:var(--warn)">–</div>
+                <div class="lbl">capacité</div>
+            </div>
+            <div class="sb-stat">
+                <div class="val" id="sbExpired" style="color:var(--danger)">0</div>
+                <div class="lbl">expirés</div>
+            </div>
+        </div>
+
+        <div class="sb-footer">
+            <div class="sb-footer-info" id="sbLastRefresh">actualisation…</div>
+            <button class="btn-lock" onclick="lockAdmin()">⏻ verrouiller</button>
+        </div>
+    </aside>
+
+    <!-- TOPBAR mobile -->
+    <header class="topbar">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="topbar-center"><span>Σ</span> admin</div>
+        <div class="topbar-right">
+            <span class="live-dot" style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;"></span>
+            <span id="topConnected">0</span>/<span id="topTotal">0</span>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="main">
+        <div class="alert" id="alert"></div>
+
+        <!-- ══ OVERVIEW ══════════════════════════════════ -->
+        <div class="section active" id="sec-overview">
+            <div>
+                <div class="section-head">vue d'ensemble</div>
+                <p class="section-sub">statistiques globales de la plateforme</p>
             </div>
 
-            <div class="admin-panel" id="adminPanel">
-                <div class="stats">
-                    <div class="stat-card">
-                        <div class="stat-value" id="totalBots">0</div>
-                        <div class="stat-label">bots totaux</div>
+            <div class="stats-grid">
+                <div class="stat-card" id="cardTotal">
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">bots totaux</div>
+                </div>
+                <div class="stat-card" id="cardConnected">
+                    <div class="stat-value" id="statConnected" style="color:var(--accent)">0</div>
+                    <div class="stat-label">connectés</div>
+                </div>
+                <div class="stat-card warn" id="cardPairing">
+                    <div class="stat-value" id="statPairing" style="color:var(--warn)">0</div>
+                    <div class="stat-label">en appairage</div>
+                </div>
+                <div class="stat-card danger" id="cardDisconnected">
+                    <div class="stat-value" id="statDisconnected" style="color:var(--danger)">0</div>
+                    <div class="stat-label">déconnectés / erreur</div>
+                </div>
+                <div class="stat-card info">
+                    <div class="stat-value" id="statStopped" style="color:var(--info)">0</div>
+                    <div class="stat-label">arrêtés</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statExpired" style="color:var(--danger)">0</div>
+                    <div class="stat-label">abonnements expirés</div>
+                </div>
+                <div class="stat-card warn">
+                    <div class="stat-value" id="statExpiringSoon" style="color:var(--warn)">0</div>
+                    <div class="stat-label">expirent dans 3j</div>
+                </div>
+                <div class="stat-card info">
+                    <div class="stat-value" id="statCapacity" style="color:var(--info)">–</div>
+                    <div class="stat-label">capacité utilisée</div>
+                </div>
+            </div>
+
+            <div class="cap-bar-wrap">
+                <div class="cap-bar-head">
+                    <span>capacité serveur</span>
+                    <strong id="capLabel">0 / 0 bots actifs</strong>
+                </div>
+                <div class="cap-bar"><div class="cap-bar-fill" id="capFill" style="width:0%"></div></div>
+            </div>
+
+            <div>
+                <div class="section-head" style="font-size:13px;margin-bottom:12px;">répartition par plan</div>
+                <div class="dist-grid">
+                    <div class="dist-card">
+                        <div class="dval" id="distTrial" style="color:var(--info)">0</div>
+                        <div class="dlbl">essai gratuit</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="connectedBots">0</div>
-                        <div class="stat-label">connectés</div>
+                    <div class="dist-card">
+                        <div class="dval" id="dist2days">0</div>
+                        <div class="dlbl">2 jours (500 FCFA)</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="disconnectedBots">0</div>
-                        <div class="stat-label">déconnectés</div>
+                    <div class="dist-card">
+                        <div class="dval" id="distWeek">0</div>
+                        <div class="dlbl">1 semaine (1000 FCFA)</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="capacityBots">0/100</div>
-                        <div class="stat-label">capacité utilisée</div>
+                    <div class="dist-card">
+                        <div class="dval" id="distMonth" style="color:var(--accent)">0</div>
+                        <div class="dlbl">1 mois (3000 FCFA)</div>
                     </div>
                 </div>
+            </div>
+        </div>
 
+        <!-- ══ BOTS ══════════════════════════════════════ -->
+        <div class="section" id="sec-bots">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                <div>
+                    <div class="section-head">liste des bots</div>
+                    <p class="section-sub">contrôle individuel de chaque instance</p>
+                </div>
+                <button class="btn-refresh" id="refreshBtn" onclick="refreshBots()">
+                    <span class="refresh-ico" style="display:inline-block">↻</span> actualiser
+                </button>
+            </div>
+
+            <div class="table-wrap">
+                <div class="table-toolbar">
+                    <div class="table-toolbar-left">
+                        <strong id="botCountLabel">0</strong> bot(s) enregistrés
+                    </div>
+                    <input class="search-input" type="text" placeholder="🔍 filtrer (numéro, uuid, statut…)"
+                           oninput="filterTable(this.value)" id="searchInput">
+                </div>
                 <div class="table-scroll">
                     <table class="bots-table">
                         <thead>
@@ -273,204 +569,339 @@
                                 <th>uuid</th>
                                 <th>numéro</th>
                                 <th>token</th>
-                                <th>statut</th>
-                                <th>abonnement</th>
+                                <th>statut bot</th>
+                                <th>plan</th>
+                                <th>sub. statut</th>
                                 <th>expire le</th>
                                 <th>créé le</th>
                                 <th>actions</th>
                             </tr>
                         </thead>
                         <tbody id="botsTableBody">
-                            <tr>
-                                <td colspan="8" style="text-align: center; padding: 40px; color: var(--muted);">
-                                    chargement...
-                                </td>
-                            </tr>
+                            <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">chargement…</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        let adminPassword = null;
+        <!-- ══ ABONNEMENTS ═══════════════════════════════ -->
+        <div class="section" id="sec-abonnements">
+            <div>
+                <div class="section-head">abonnements</div>
+                <p class="section-sub">bots dont l'abonnement expire bientôt ou est expiré</p>
+            </div>
+            <div class="table-wrap">
+                <div class="table-scroll">
+                    <table class="bots-table">
+                        <thead>
+                            <tr>
+                                <th>numéro</th>
+                                <th>plan</th>
+                                <th>statut sub.</th>
+                                <th>expire le</th>
+                                <th>statut bot</th>
+                                <th>prolonger</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subTableBody">
+                            <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">chargement…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-        function showAlert(message, type) {
-            const alertDiv = document.getElementById('alert');
-            alertDiv.textContent = message;
-            alertDiv.className = `alert ${type} show`;
-            setTimeout(() => {
-                alertDiv.classList.remove('show');
-            }, 5000);
-        }
+    </main>
+</div>
 
-        async function authenticate() {
-            const password = document.getElementById('adminPassword').value;
+<script>
+let adminPassword = null;
+let allBots = [];
 
-            if (!password) {
-                showAlert('veuillez entrer le mot de passe', 'error');
-                return;
-            }
+const PLAN_LABELS = { trial:'essai', '2days':'2 jours', week:'1 semaine', month:'1 mois' };
 
-            adminPassword = password;
-            await loadBots();
-        }
+// ── SIDEBAR / HAMBURGER ──────────────────────────────────────────
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const hb = document.getElementById('hamburger');
+    const ov = document.getElementById('overlay');
+    sb.classList.toggle('open'); hb.classList.toggle('open'); ov.classList.toggle('open');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('hamburger').classList.remove('open');
+    document.getElementById('overlay').classList.remove('open');
+}
 
-        async function loadBots() {
-            try {
-                const response = await fetch('/api/admin/bots', {
-                    headers: {
-                        'Authorization': 'Bearer ' + adminPassword
-                    }
-                });
-                const data = await response.json();
+// ── SECTION ROUTING ──────────────────────────────────────────────
+const SECTION_LABELS = { overview:'vue d\'ensemble', bots:'liste des bots', abonnements:'abonnements' };
+function showSection(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sec-' + name).classList.add('active');
+    document.querySelector(`[data-sec="${name}"]`).classList.add('active');
+    if (window.innerWidth <= 900) closeSidebar();
+}
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'erreur lors du chargement');
-                }
+// ── ALERTS ───────────────────────────────────────────────────────
+function showAlert(msg, type, id = 'alert') {
+    const el = document.getElementById(id);
+    el.textContent = msg; el.className = `alert ${type} show`;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 6000);
+}
 
-                document.getElementById('authForm').style.display = 'none';
-                document.getElementById('adminPanel').classList.add('active');
+// ── AUTH ─────────────────────────────────────────────────────────
+async function authenticate() {
+    const pw = document.getElementById('adminPassword').value.trim();
+    if (!pw) { showAlert('entrez le mot de passe', 'error', 'authAlert'); return; }
+    adminPassword = pw;
+    const ok = await loadBots(true);
+    if (ok) {
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('dashboard').classList.remove('hidden');
+    } else {
+        adminPassword = null;
+        document.getElementById('adminPassword').value = '';
+    }
+}
+function lockAdmin() {
+    adminPassword = null; allBots = [];
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('adminPassword').value = '';
+}
 
-                const total = data.bots.length;
-                const connected = data.bots.filter(b => b.socketStatus === 'connected').length;
-                const disconnected = total - connected;
+// ── LOAD BOTS ────────────────────────────────────────────────────
+async function loadBots(silent = false) {
+    try {
+        const r = await fetch('/api/admin/bots', {
+            headers: { 'Authorization': 'Bearer ' + adminPassword }
+        });
+        const d = await r.json();
+        if (!r.ok) { showAlert(d.error || 'accès refusé', 'error', silent ? 'authAlert' : 'alert'); return false; }
 
-                document.getElementById('totalBots').textContent = total;
-                document.getElementById('connectedBots').textContent = connected;
-                document.getElementById('disconnectedBots').textContent = disconnected;
+        allBots = d.bots || [];
+        renderAll(d);
+        return true;
+    } catch (err) {
+        if (!silent) showAlert('erreur réseau : ' + err.message, 'error');
+        return false;
+    }
+}
 
-                if (data.capacity) {
-                    const cap = data.capacity;
-                    document.getElementById('capacityBots').textContent = `${cap.active}/${cap.max}`;
-                    const pct = Math.round((cap.active / cap.max) * 100);
-                    const capCard = document.getElementById('capacityBots').parentElement;
-                    capCard.style.borderTopColor = pct >= 90 ? '#ff5f56' : pct >= 70 ? '#ffbd2e' : '#26a641';
-                }
+function renderAll(d) {
+    const bots = allBots;
+    const total       = bots.length;
+    const now         = new Date();
+    const connected   = bots.filter(b => (b.socketStatus||b.status) === 'connected').length;
+    const stopped     = bots.filter(b => (b.socketStatus||b.status) === 'stopped').length;
+    const pairing     = bots.filter(b => ['pairing','connecting'].includes(b.socketStatus||b.status)).length;
+    const disco       = bots.filter(b => ['disconnected','error','logged_out'].includes(b.socketStatus||b.status)).length;
+    const expired     = bots.filter(b => b.subscriptionExpiresAt && new Date(b.subscriptionExpiresAt) < now).length;
+    const expireSoon  = bots.filter(b => {
+        if (!b.subscriptionExpiresAt) return false;
+        const e = new Date(b.subscriptionExpiresAt);
+        return e >= now && (e - now) < 3 * 86400000;
+    }).length;
 
-                const tbody = document.getElementById('botsTableBody');
-                tbody.innerHTML = '';
+    // Stat cards
+    document.getElementById('statTotal').textContent       = total;
+    document.getElementById('statConnected').textContent   = connected;
+    document.getElementById('statPairing').textContent     = pairing;
+    document.getElementById('statDisconnected').textContent= disco;
+    document.getElementById('statStopped').textContent     = stopped;
+    document.getElementById('statExpired').textContent     = expired;
+    document.getElementById('statExpiringSoon').textContent= expireSoon;
 
-                if (data.bots.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--muted);">aucun bot déployé</td></tr>';
-                    return;
-                }
+    // Capacity
+    const cap = d.capacity || { active: connected, max: 100 };
+    const pct = cap.max > 0 ? Math.round((cap.active / cap.max) * 100) : 0;
+    document.getElementById('statCapacity').textContent = `${pct}%`;
+    document.getElementById('capLabel').textContent     = `${cap.active} / ${cap.max} bots actifs`;
+    const fill = document.getElementById('capFill');
+    fill.style.width = pct + '%';
+    fill.style.background = pct >= 90 ? 'var(--danger)' : pct >= 70 ? 'var(--warn)' : 'var(--accent)';
 
-                const PLAN_LABELS = { trial: 'essai', '2days': '2 jours', week: '1 semaine', month: '1 mois' };
+    // Plan distribution
+    ['trial','2days','week','month'].forEach(p => {
+        const id = { trial:'distTrial', '2days':'dist2days', week:'distWeek', month:'distMonth' }[p];
+        document.getElementById(id).textContent = bots.filter(b => b.subscriptionPlan === p).length;
+    });
 
-                data.bots.forEach(bot => {
-                    const row = document.createElement('tr');
-                    const createdAt = new Date(bot.createdAt).toLocaleString('fr-FR');
-                    const status = bot.socketStatus || bot.status || 'unknown';
-                    const plan = bot.subscriptionPlan ? (PLAN_LABELS[bot.subscriptionPlan] || bot.subscriptionPlan) : '-';
-                    const expiresAt = bot.subscriptionExpiresAt ? new Date(bot.subscriptionExpiresAt) : null;
-                    const expiresLabel = expiresAt ? expiresAt.toLocaleString('fr-FR') : '-';
-                    const expiresColor = expiresAt && expiresAt < new Date() ? 'color: #ff5f56; font-weight: 700;' : '';
+    // Sidebar mini stats
+    document.getElementById('sbConnected').textContent = connected;
+    document.getElementById('sbTotal').textContent     = total;
+    document.getElementById('sbCapacity').textContent  = `${pct}%`;
+    document.getElementById('sbExpired').textContent   = expired;
 
-                    row.innerHTML = `
-                        <td style="font-size: 11px; color: var(--muted);">${bot.uuid.substring(0, 8)}...</td>
-                        <td>${bot.phoneNumber || '-'}</td>
-                        <td class="token-cell" title="${bot.token}">${bot.token.substring(0, 20)}...</td>
-                        <td><span class="status-badge ${status}">${status}</span></td>
-                        <td>${plan}</td>
-                        <td style="${expiresColor}">${expiresLabel}</td>
-                        <td>${createdAt}</td>
-                        <td class="action-buttons">
-                            <button class="btn-action btn-start" onclick="adminAction('${bot.uuid}', 'start')">start</button>
-                            <button class="btn-action btn-stop" onclick="adminAction('${bot.uuid}', 'stop')">stop</button>
-                            <button class="btn-action btn-restart" onclick="adminAction('${bot.uuid}', 'restart')">restart</button>
-                            <button class="btn-action btn-delete" onclick="adminAction('${bot.uuid}', 'delete')">delete</button>
-                            <select id="plan-${bot.uuid}">
-                                <option value="2days">2j/500F</option>
-                                <option value="week">7j/1000F</option>
-                                <option value="month">30j/3000F</option>
-                            </select>
-                            <button class="btn-action btn-start" onclick="extendSubscription('${bot.uuid}')">+ajouter</button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
+    // Topbar
+    document.getElementById('topConnected').textContent = connected;
+    document.getElementById('topTotal').textContent     = total;
 
-            } catch (error) {
-                showAlert(`erreur : ${error.message}`, 'error');
-                if (error.message.includes('non autorisé')) {
-                    adminPassword = null;
-                    document.getElementById('adminPassword').value = '';
-                }
-            }
-        }
+    // Refresh time
+    document.getElementById('sbLastRefresh').textContent =
+        'maj : ' + new Date().toLocaleTimeString('fr-FR');
 
-        async function adminAction(uuid, action) {
-            if (!adminPassword) {
-                showAlert('veuillez vous authentifier', 'error');
-                return;
-            }
+    // Tables
+    renderBotsTable(bots);
+    renderSubTable(bots, now, expireSoon);
+    document.getElementById('botCountLabel').textContent = total;
+}
 
-            if (action === 'delete' && !confirm(`êtes-vous sûr de vouloir supprimer le bot ${uuid.substring(0, 8)}... ?`)) {
-                return;
-            }
+// ── BOTS TABLE ───────────────────────────────────────────────────
+function renderBotsTable(bots) {
+    const tbody = document.getElementById('botsTableBody');
+    tbody.innerHTML = '';
+    if (!bots.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">aucun bot déployé</td></tr>';
+        return;
+    }
+    const now = new Date();
+    bots.forEach(bot => {
+        const status  = bot.socketStatus || bot.status || 'unknown';
+        const plan    = PLAN_LABELS[bot.subscriptionPlan] || bot.subscriptionPlan || '–';
+        const exp     = bot.subscriptionExpiresAt ? new Date(bot.subscriptionExpiresAt) : null;
+        const expLbl  = exp ? exp.toLocaleString('fr-FR') : '–';
+        const expStyle = exp && exp < now ? 'color:var(--danger);font-weight:700' : (exp && (exp-now)<3*86400000 ? 'color:var(--warn)' : '');
+        const subStat = !exp ? '–' : exp < now ? 'expired' : (exp-now)<3*86400000 ? 'expiring' : 'active';
+        const created = bot.createdAt ? new Date(bot.createdAt).toLocaleString('fr-FR') : '–';
 
-            try {
-                const response = await fetch(`/api/admin/bot/${uuid}/${action}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + adminPassword
-                    },
-                    body: JSON.stringify({})
-                });
+        const tr = document.createElement('tr');
+        tr.dataset.search = `${bot.uuid} ${bot.phoneNumber} ${status} ${plan}`.toLowerCase();
+        tr.innerHTML = `
+            <td class="uuid-cell" title="${bot.uuid}">${bot.uuid.slice(0,8)}…</td>
+            <td>${bot.phoneNumber || '–'}</td>
+            <td class="token-cell" title="${bot.token}">${bot.token.slice(0,18)}…</td>
+            <td><span class="badge ${status}">${status}</span></td>
+            <td>${plan}</td>
+            <td><span class="badge ${subStat}">${subStat}</span></td>
+            <td style="${expStyle}">${expLbl}</td>
+            <td>${created}</td>
+            <td>
+                <div class="action-group">
+                    <button class="btn-a s"  onclick="adminAction('${bot.uuid}','start')">▶</button>
+                    <button class="btn-a st" onclick="adminAction('${bot.uuid}','stop')">■</button>
+                    <button class="btn-a r"  onclick="adminAction('${bot.uuid}','restart')">↻</button>
+                    <button class="btn-a d"  onclick="adminAction('${bot.uuid}','delete')">✕</button>
+                    <select class="plan-sel" id="plan-${bot.uuid}">
+                        <option value="2days">2j / 500F</option>
+                        <option value="week">7j / 1000F</option>
+                        <option value="month">30j / 3000F</option>
+                    </select>
+                    <button class="btn-a ex" onclick="extendSub('${bot.uuid}')">+sub</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
 
-                const data = await response.json();
+// ── SUBSCRIPTIONS TABLE ──────────────────────────────────────────
+function renderSubTable(bots, now) {
+    const tbody = document.getElementById('subTableBody');
+    const relevant = bots.filter(b => {
+        if (!b.subscriptionExpiresAt) return false;
+        const e = new Date(b.subscriptionExpiresAt);
+        return e < now || (e - now) < 7 * 86400000;
+    }).sort((a,b) => new Date(a.subscriptionExpiresAt) - new Date(b.subscriptionExpiresAt));
 
-                if (!response.ok) {
-                    throw new Error(data.error || "erreur lors de l'action");
-                }
+    tbody.innerHTML = '';
+    if (!relevant.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">aucun abonnement à surveiller</td></tr>';
+        return;
+    }
+    relevant.forEach(bot => {
+        const exp    = new Date(bot.subscriptionExpiresAt);
+        const status = bot.socketStatus || bot.status || 'unknown';
+        const subStat = exp < now ? 'expired' : (exp-now)<3*86400000 ? 'expiring' : 'active';
+        const expStyle = exp < now ? 'color:var(--danger);font-weight:700' : 'color:var(--warn)';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${bot.phoneNumber || '–'}</td>
+            <td>${PLAN_LABELS[bot.subscriptionPlan] || bot.subscriptionPlan || '–'}</td>
+            <td><span class="badge ${subStat}">${subStat}</span></td>
+            <td style="${expStyle}">${exp.toLocaleString('fr-FR')}</td>
+            <td><span class="badge ${status}">${status}</span></td>
+            <td>
+                <div class="action-group">
+                    <select class="plan-sel" id="subplan-${bot.uuid}">
+                        <option value="2days">2j</option>
+                        <option value="week">7j</option>
+                        <option value="month">30j</option>
+                    </select>
+                    <button class="btn-a ex" onclick="extendSubFromSel('${bot.uuid}','subplan-${bot.uuid}')">+sub</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
 
-                showAlert(`action ${action} exécutée avec succès`, 'success');
-                await loadBots();
-            } catch (error) {
-                showAlert(`erreur : ${error.message}`, 'error');
-            }
-        }
+// ── FILTER ───────────────────────────────────────────────────────
+function filterTable(q) {
+    const qq = q.toLowerCase();
+    document.querySelectorAll('#botsTableBody tr[data-search]').forEach(tr => {
+        tr.style.display = tr.dataset.search.includes(qq) ? '' : 'none';
+    });
+}
 
-        async function extendSubscription(uuid) {
-            if (!adminPassword) {
-                showAlert('veuillez vous authentifier', 'error');
-                return;
-            }
+// ── REFRESH ──────────────────────────────────────────────────────
+async function refreshBots() {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('spinning'); btn.disabled = true;
+    await loadBots();
+    btn.classList.remove('spinning'); btn.disabled = false;
+}
 
-            const select = document.getElementById(`plan-${uuid}`);
-            const plan = select ? select.value : '2days';
+// ── ADMIN ACTIONS ────────────────────────────────────────────────
+async function adminAction(uuid, action) {
+    if (!adminPassword) return;
+    if (action === 'delete' && !confirm(`supprimer le bot ${uuid.slice(0,8)}… ? action irréversible.`)) return;
 
-            try {
-                const response = await fetch(`/api/admin/bot/${uuid}/extend-subscription`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + adminPassword
-                    },
-                    body: JSON.stringify({ plan })
-                });
+    const method = action === 'delete' ? 'DELETE' : 'POST';
+    const url = action === 'delete'
+        ? `/api/admin/bot/${uuid}/delete`
+        : `/api/admin/bot/${uuid}/${action}`;
 
-                const data = await response.json();
+    try {
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + adminPassword },
+            body: JSON.stringify({})
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'erreur');
+        showAlert(`✅ ${action} exécuté sur ${uuid.slice(0,8)}…`, 'success');
+        await loadBots();
+    } catch (err) { showAlert('erreur : ' + err.message, 'error'); }
+}
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'erreur lors de la prolongation');
-                }
+async function extendSub(uuid) {
+    const sel = document.getElementById('plan-' + uuid);
+    await doExtend(uuid, sel ? sel.value : '2days');
+}
+async function extendSubFromSel(uuid, selId) {
+    const sel = document.getElementById(selId);
+    await doExtend(uuid, sel ? sel.value : '2days');
+}
+async function doExtend(uuid, plan) {
+    try {
+        const r = await fetch(`/api/admin/bot/${uuid}/extend-subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + adminPassword },
+            body: JSON.stringify({ plan })
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'erreur');
+        showAlert(`✅ abonnement prolongé (${plan}) pour ${uuid.slice(0,8)}…`, 'success');
+        await loadBots();
+    } catch (err) { showAlert('erreur : ' + err.message, 'error'); }
+}
 
-                showAlert('abonnement prolongé avec succès', 'success');
-                await loadBots();
-            } catch (error) {
-                showAlert(`erreur : ${error.message}`, 'error');
-            }
-        }
-
-        setInterval(() => {
-            if (adminPassword) {
-                loadBots();
-            }
-        }, 30000);
-    </script>
+// ── AUTO REFRESH ─────────────────────────────────────────────────
+setInterval(() => { if (adminPassword) loadBots(); }, 30000);
+</script>
 </body>
 </html>
