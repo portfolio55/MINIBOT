@@ -873,6 +873,25 @@ class BotManager extends EventEmitter {
 
         await this.initializeBot(uuid);
 
+        // [24/7 KEEPALIVE] Présence WhatsApp périodique pour éviter les coupures
+        // idle. Le keepAliveIntervalMs maintient le WebSocket TCP vivant, mais
+        // WhatsApp peut quand même fermer la session applicative si aucune trame
+        // de présence n'est envoyée. On envoie 'unavailable' toutes les 8 min :
+        // cela prouve au serveur WA que la session est active sans afficher le
+        // bot comme "en ligne" auprès des contacts.
+        if (bot._presenceKeepaliveTimer) clearInterval(bot._presenceKeepaliveTimer);
+        const presenceIntervalMs = parseInt(process.env.PRESENCE_KEEPALIVE_MS || "480000"); // 8 min
+        bot._presenceKeepaliveTimer = setInterval(async () => {
+          try {
+            const b = this.bots.get(uuid);
+            if (!b || !b.socket || b.status !== "connected") {
+              clearInterval(b?._presenceKeepaliveTimer);
+              return;
+            }
+            await b.socket.sendPresenceUpdate("unavailable");
+          } catch (_) {}
+        }, presenceIntervalMs);
+
         this.emit("bot-connected", { uuid });
       }
 
@@ -883,6 +902,12 @@ class BotManager extends EventEmitter {
         bot.status = "disconnected";
         await updateBotStatus(uuid, "disconnected");
         this.emit("bot-disconnected", { uuid, reason });
+
+        // Nettoyage du timer de présence keepalive
+        if (bot._presenceKeepaliveTimer) {
+          clearInterval(bot._presenceKeepaliveTimer);
+          bot._presenceKeepaliveTimer = null;
+        }
 
         if (bot.connectingWatchdog) {
           clearTimeout(bot.connectingWatchdog);
