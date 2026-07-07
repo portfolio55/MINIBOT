@@ -45,7 +45,11 @@ const normalizeBotEntry = (row) => ({
   status: row.status || "pairing",
   createdAt: row.createdAt || new Date().toISOString(),
   lastConnected: row.lastConnected || null,
-  sessionPath: `./sessions/bot_${row.uuid}`
+  sessionPath: `./sessions/bot_${row.uuid}`,
+  username: row.username || null,
+  subscriptionPlan: row.subscriptionPlan || null,
+  subscriptionExpiresAt: row.subscriptionExpiresAt || null,
+  trialUsed: row.trialUsed ?? false
 });
 
 await warmCache();
