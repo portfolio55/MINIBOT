@@ -3,585 +3,771 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>SIGMA MDX DEPLOY — mon espace</title>
+    <title>SIGMA MDX — mon espace</title>
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
     <meta name="theme-color" content="#0a0d0f">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         :root {
-            --bg: #0a0d0f;
-            --panel: #12171a;
-            --panel-2: #171d21;
-            --border: #232a2e;
-            --text: #d9dfe2;
-            --muted: #7a8790;
-            --accent: #39d353;
+            --bg:         #0a0d0f;
+            --panel:      #12171a;
+            --panel-2:    #171d21;
+            --border:     #232a2e;
+            --text:       #d9dfe2;
+            --muted:      #7a8790;
+            --accent:     #39d353;
             --accent-dim: #26a641;
-            --whatsapp: #25D366;
-            --warn: #ffbd2e;
-            --danger: #ff5f56;
-            --mono: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, 'Courier New', monospace;
+            --whatsapp:   #25D366;
+            --warn:       #ffbd2e;
+            --danger:     #ff5f56;
+            --sidebar-w:  240px;
+            --topbar-h:   56px;
+            --mono: 'JetBrains Mono','Fira Code','SFMono-Regular',Consolas,'Courier New',monospace;
             --radius: 6px;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
         body {
             font-family: var(--mono);
             background: var(--bg);
             background-image:
-                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+                linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
             background-size: 28px 28px;
             color: var(--text);
             min-height: 100vh;
-            padding: 32px 16px 100px;
+            display: flex;
         }
-        .term {
-            max-width: 760px;
-            margin: 0 auto;
+
+        /* ── OVERLAY MOBILE ─────────────────────────────── */
+        .overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 99;
+            backdrop-filter: blur(2px);
+        }
+        .overlay.open { display: block; }
+
+        /* ── SIDEBAR ────────────────────────────────────── */
+        .sidebar {
+            position: fixed; top: 0; left: 0;
+            width: var(--sidebar-w);
+            height: 100vh;
             background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            overflow: hidden;
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            z-index: 100;
+            transition: transform .25s cubic-bezier(.4,0,.2,1);
         }
-        .term-bar {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 14px;
-            background: var(--panel-2);
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,.5); }
+        }
+
+        .sidebar-brand {
+            display: flex; align-items: center; gap: 10px;
+            padding: 20px 18px 18px;
             border-bottom: 1px solid var(--border);
         }
-        .term-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .term-dot.r { background: var(--danger); }
-        .term-dot.y { background: var(--warn); }
-        .term-dot.g { background: var(--accent-dim); }
-        .term-title { margin-left: 8px; font-size: 12px; color: var(--muted); }
-        .term-body { padding: 28px; }
-        @media (max-width: 480px) { .term-body { padding: 20px 16px; } }
-
-        .brand-mark {
-            width: 40px; height: 40px; margin: 0 auto 14px;
-            border-radius: 6px;
+        .brand-icon {
+            width: 34px; height: 34px; border-radius: 6px;
             background: var(--panel-2);
             border: 1px solid var(--accent);
             display: flex; align-items: center; justify-content: center;
-            font-size: 19px; font-weight: 700; color: var(--accent);
+            font-size: 16px; font-weight: 700; color: var(--accent);
+            flex-shrink: 0;
         }
-        h1 { text-align: center; margin-bottom: 4px; font-size: 18px; font-weight: 700; }
-        .subtitle { text-align: center; color: var(--muted); margin-bottom: 26px; font-size: 12.5px; }
+        .brand-name { font-size: 13px; font-weight: 700; color: var(--text); }
+        .brand-sub  { font-size: 10px; color: var(--muted); margin-top: 1px; }
 
-        .section-title {
-            margin-bottom: 14px;
-            font-size: 13px;
-            font-weight: 400;
-            color: var(--muted);
+        .sidebar-user {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
         }
-        .section-title::before { content: "// "; color: var(--accent); }
+        .sidebar-user .user-id {
+            font-size: 12px; color: var(--accent); font-weight: 700;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .sidebar-user .user-phone {
+            font-size: 11px; color: var(--muted); margin-top: 3px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .sidebar-user .sub-badge {
+            display: inline-block; margin-top: 7px;
+            padding: 2px 8px; border-radius: 3px; font-size: 10px; border: 1px solid;
+        }
+        .sub-badge.active   { color: var(--accent); border-color: var(--accent-dim); background: rgba(57,211,83,.1); }
+        .sub-badge.expiring { color: var(--warn);   border-color: var(--warn);        background: rgba(255,189,46,.08); }
+        .sub-badge.expired  { color: var(--danger); border-color: var(--danger);      background: rgba(255,95,86,.08); }
 
-        .divider {
-            border: none;
+        .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+        .nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 18px;
+            font-size: 12.5px; font-weight: 700; color: var(--muted);
+            cursor: pointer; border: none; background: none;
+            width: 100%; text-align: left; font-family: var(--mono);
+            border-left: 2px solid transparent;
+            transition: color .15s, background .15s, border-color .15s;
+        }
+        .nav-item:hover { color: var(--text); background: rgba(255,255,255,.04); }
+        .nav-item.active { color: var(--accent); background: rgba(57,211,83,.07); border-left-color: var(--accent); }
+        .nav-item .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+        .nav-section-label {
+            padding: 14px 18px 4px;
+            font-size: 10px; color: var(--border); letter-spacing: .08em; text-transform: uppercase;
+        }
+
+        .sidebar-bot-status {
+            padding: 12px 18px;
             border-top: 1px solid var(--border);
-            margin: 26px 0;
+        }
+        .bot-status-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+        .bot-dot {
+            width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
+            flex-shrink: 0; transition: background .3s;
+        }
+        .bot-dot.connected  { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+        .bot-dot.pairing,
+        .bot-dot.connecting { background: var(--warn); }
+        .bot-dot.error,
+        .bot-dot.disconnected { background: var(--danger); }
+        .bot-status-label { color: var(--muted); }
+        .bot-status-val   { color: var(--text); }
+
+        .sidebar-footer {
+            padding: 14px 18px;
+            border-top: 1px solid var(--border);
+        }
+        .btn-logout {
+            display: flex; align-items: center; gap: 8px;
+            width: 100%; padding: 9px 12px;
+            background: transparent; border: 1px solid var(--border);
+            border-radius: var(--radius); color: var(--muted);
+            font-size: 12px; font-weight: 700; font-family: var(--mono);
+            cursor: pointer; transition: color .15s, border-color .15s;
+        }
+        .btn-logout:hover { color: var(--danger); border-color: var(--danger); }
+
+        /* ── TOPBAR (mobile) ────────────────────────────── */
+        .topbar {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0;
+            height: var(--topbar-h);
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            align-items: center; justify-content: space-between;
+            padding: 0 16px;
+            z-index: 98;
+        }
+        @media (max-width: 768px) { .topbar { display: flex; } }
+        .hamburger {
+            display: flex; flex-direction: column; gap: 4px;
+            width: 28px; height: 28px; justify-content: center;
+            background: none; border: none; cursor: pointer; padding: 2px;
+        }
+        .hamburger span {
+            display: block; height: 2px; border-radius: 2px;
+            background: var(--text); transition: transform .2s, opacity .2s;
+        }
+        .hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+        .hamburger.open span:nth-child(2) { opacity: 0; }
+        .hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+        .topbar-brand { font-size: 14px; font-weight: 700; color: var(--text); }
+        .topbar-brand span { color: var(--accent); }
+        .topbar-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+
+        /* ── MAIN CONTENT ───────────────────────────────── */
+        .main {
+            margin-left: var(--sidebar-w);
+            flex: 1;
+            padding: 32px;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            max-width: calc(100vw - var(--sidebar-w));
+        }
+        @media (max-width: 768px) {
+            .main { margin-left: 0; padding: 16px; padding-top: calc(var(--topbar-h) + 16px); max-width: 100vw; }
         }
 
+        .content-panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            max-width: 680px;
+            width: 100%;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,.35);
+        }
+        .panel-header {
+            display: flex; align-items: center; gap: 10px;
+            padding: 14px 20px;
+            background: var(--panel-2);
+            border-bottom: 1px solid var(--border);
+        }
+        .panel-header-dots { display: flex; gap: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot.r { background: var(--danger); }
+        .dot.y { background: var(--warn); }
+        .dot.g { background: var(--accent-dim); }
+        .panel-header-title { font-size: 12px; color: var(--muted); margin-left: 6px; }
+        .panel-body { padding: 24px; }
+        @media (max-width: 480px) { .panel-body { padding: 18px 14px; } }
+
+        /* Section visibility */
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .section-heading {
+            font-size: 16px; font-weight: 700; margin-bottom: 4px;
+        }
+        .section-heading::before { content: "Σ "; color: var(--accent); }
+        .section-sub {
+            font-size: 12px; color: var(--muted); margin-bottom: 22px;
+        }
+
+        /* ── INFO CARD ───────────────────────────────────── */
         .info-card {
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 18px;
-            margin-bottom: 24px;
+            padding: 16px; margin-bottom: 20px;
         }
         .info-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 13px;
-            padding-bottom: 13px;
-            border-bottom: 1px solid var(--border);
-            font-size: 13px;
-            flex-wrap: wrap;
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 12px; font-size: 13px; flex-wrap: wrap;
+            padding: 10px 0; border-bottom: 1px solid var(--border);
         }
-        .info-row:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
-        .info-label { color: var(--muted); }
-        .info-value { color: var(--text); word-break: break-all; }
+        .info-row:first-child { padding-top: 0; }
+        .info-row:last-child  { padding-bottom: 0; border-bottom: none; }
+        .info-label { color: var(--muted); white-space: nowrap; }
+        .info-value { color: var(--text); word-break: break-all; text-align: right; }
 
+        /* ── STATUS BADGES ──────────────────────────────── */
         .status-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            border: 1px solid;
-            text-transform: lowercase;
+            display: inline-block; padding: 3px 9px; border-radius: 4px;
+            font-size: 11px; border: 1px solid; text-transform: lowercase;
         }
-        .status-badge.connected,
-        .status-badge.active { color: var(--accent); border-color: var(--accent-dim); background: rgba(57,211,83,0.08); }
+        .status-badge.connected  { color: var(--accent); border-color: var(--accent-dim); background: rgba(57,211,83,.08); }
         .status-badge.disconnected,
-        .status-badge.expired { color: var(--danger); border-color: var(--danger); background: rgba(255,95,86,0.08); }
+        .status-badge.expired    { color: var(--danger); border-color: var(--danger); background: rgba(255,95,86,.08); }
         .status-badge.pairing,
-        .status-badge.connecting,
-        .status-badge.expiring { color: var(--warn); border-color: var(--warn); background: rgba(255,189,46,0.08); }
-        .status-badge.stopped { color: var(--muted); border-color: var(--border); background: var(--panel-2); }
+        .status-badge.connecting { color: var(--warn);   border-color: var(--warn);   background: rgba(255,189,46,.08); }
+        .status-badge.stopped    { color: var(--muted);  border-color: var(--border);  background: var(--panel-2); }
 
+        /* ── BOT ACTIONS ─────────────────────────────────── */
         .actions {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-bottom: 24px;
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;
         }
-        @media (max-width: 560px) { .actions { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 480px) { .actions { grid-template-columns: repeat(4, 1fr); } }
 
         button {
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            font-size: 12.5px;
-            font-weight: 700;
-            font-family: var(--mono);
-            cursor: pointer;
-            transition: transform .1s, border-color .15s;
-            background: var(--bg);
-            color: var(--text);
+            padding: 11px 8px;
+            border: 1px solid var(--border); border-radius: var(--radius);
+            font-size: 12px; font-weight: 700; font-family: var(--mono);
+            cursor: pointer; background: var(--bg); color: var(--text);
+            transition: transform .1s, opacity .15s;
         }
         button:hover:not(:disabled) { transform: translateY(-1px); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .btn-start { border-color: var(--accent-dim); color: var(--accent); }
-        .btn-stop  { border-color: var(--danger); color: var(--danger); }
-        .btn-restart { border-color: var(--warn); color: var(--warn); }
-        .btn-delete { border-color: var(--border); color: var(--muted); }
+        button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+        .btn-start   { border-color: var(--accent-dim); color: var(--accent); }
+        .btn-stop    { border-color: var(--danger);      color: var(--danger); }
+        .btn-restart { border-color: var(--warn);        color: var(--warn); }
+        .btn-delete  { border-color: var(--border);      color: var(--muted); }
 
-        .plans {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .plan-card {
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 16px;
-            text-align: center;
-            background: var(--bg);
-        }
-        .plan-card h3 { font-size: 13px; color: var(--text); margin-bottom: 6px; font-weight: 700; }
-        .plan-card .price { font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
-        .plan-card button {
-            width: 100%;
-            padding: 9px;
-            border: none;
-            background: var(--accent);
-            color: #04120a;
-        }
-        .plan-card button:hover:not(:disabled) { background: #4ee566; }
-        .plan-card button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .plan-card button + button { margin-top: 8px; }
-        .plan-card button.stripe-btn { background: #635bff; color: #fff; }
-        .plan-card button.stripe-btn:hover:not(:disabled) { background: #7a73ff; }
-
+        /* ── ALERT ──────────────────────────────────────── */
         .alert {
-            padding: 12px 13px;
-            border-radius: var(--radius);
-            margin-bottom: 18px;
-            display: none;
-            font-size: 12.5px;
-            border: 1px solid;
+            padding: 11px 13px; border-radius: var(--radius); border: 1px solid;
+            font-size: 12.5px; margin-bottom: 16px; display: none;
         }
-        .alert.show { display: block; }
-        .alert.success { background: rgba(57,211,83,0.08); color: var(--accent); border-color: var(--accent-dim); }
-        .alert.error { background: rgba(255,95,86,0.08); color: var(--danger); border-color: var(--danger); }
+        .alert.show    { display: block; }
+        .alert.success { background: rgba(57,211,83,.08); color: var(--accent); border-color: var(--accent-dim); }
+        .alert.error   { background: rgba(255,95,86,.08); color: var(--danger); border-color: var(--danger); }
 
-        .loading {
-            display: inline-block;
-            width: 13px; height: 13px;
-            border: 2px solid rgba(255,255,255,0.25);
-            border-radius: 50%;
-            border-top-color: currentColor;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 6px;
+        /* ── LOADING SPINNER ─────────────────────────────── */
+        .spinner {
+            display: inline-block; width: 12px; height: 12px;
+            border: 2px solid rgba(255,255,255,.2); border-radius: 50%;
+            border-top-color: currentColor; animation: spin .8s linear infinite; margin-right: 5px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* ── DELETE CONFIRM ─────────────────────────────── */
         .delete-confirm {
-            background: rgba(255,189,46,0.08);
-            border: 1px solid var(--warn);
-            border-radius: var(--radius);
-            padding: 18px;
-            margin-top: 18px;
-            display: none;
+            background: rgba(255,189,46,.07); border: 1px solid var(--warn);
+            border-radius: var(--radius); padding: 16px; margin-top: 16px; display: none;
         }
         .delete-confirm.show { display: block; }
-        .delete-confirm p { margin-bottom: 13px; color: var(--warn); font-size: 13px; }
-        .delete-confirm-buttons { display: flex; gap: 10px; }
-        .delete-confirm-buttons button { flex: 1; }
+        .delete-confirm p { color: var(--warn); font-size: 12.5px; margin-bottom: 12px; }
+        .delete-btns { display: flex; gap: 10px; }
+        .delete-btns button { flex: 1; }
 
-        .channel-banner {
-            background: var(--bg);
-            border: 1px dashed var(--accent-dim);
-            color: var(--text);
-            padding: 16px;
-            border-radius: var(--radius);
-            margin-bottom: 22px;
-            text-align: center;
+        /* ── PLANS ──────────────────────────────────────── */
+        .plans {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px; margin-bottom: 16px;
         }
-        .channel-banner h2 { font-size: 13px; margin-bottom: 6px; font-weight: 700; }
-        .channel-banner h2::before { content: "// "; color: var(--accent); }
-        .channel-banner p { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
-        .btn-channel {
-            display: inline-block;
-            padding: 10px 20px;
-            background: var(--whatsapp);
-            color: #052e18;
-            font-weight: 700;
-            text-decoration: none;
-            border-radius: var(--radius);
+        .plan-card {
+            border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 16px; text-align: center; background: var(--bg);
+            transition: border-color .15s;
+        }
+        .plan-card:hover { border-color: var(--accent-dim); }
+        .plan-card h3 { font-size: 13px; margin-bottom: 4px; }
+        .plan-card .price { font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
+        .plan-card .price small { font-size: 11px; color: var(--muted); display: block; margin-top: 2px; }
+        .plan-card .pay-btn {
+            width: 100%; padding: 9px; border: none; border-radius: 4px;
+            background: var(--accent); color: #04120a;
+            font-weight: 700; font-family: var(--mono); cursor: pointer;
+            font-size: 12px;
+        }
+        .plan-card .pay-btn:hover:not(:disabled) { background: #4ee566; }
+        .plan-card .pay-btn:disabled { opacity: .5; cursor: not-allowed; }
+        .plan-card .pay-btn + .pay-btn { margin-top: 8px; background: #635bff; color: #fff; }
+        .plan-card .pay-btn + .pay-btn:hover:not(:disabled) { background: #7a73ff; }
+
+        /* ── CHANNEL CARD ────────────────────────────────── */
+        .channel-card {
+            background: var(--bg); border: 1px dashed var(--accent-dim);
+            border-radius: var(--radius); padding: 20px; text-align: center;
+        }
+        .channel-card h3 { font-size: 14px; margin-bottom: 6px; }
+        .channel-card h3::before { content: "// "; color: var(--accent); }
+        .channel-card p { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+        .btn-wa {
+            display: inline-block; padding: 10px 22px;
+            background: var(--whatsapp); color: #052e18;
+            font-weight: 700; text-decoration: none; border-radius: var(--radius);
             font-size: 13px;
         }
-        .btn-channel:hover { background: #33e879; }
+        .btn-wa:hover { background: #33e879; }
 
-        .btn-channel-floating {
-            position: fixed;
-            bottom: 18px; right: 18px;
-            z-index: 9999;
-            padding: 12px 18px;
-            background: var(--whatsapp);
-            color: #052e18;
-            font-weight: 700;
-            text-decoration: none;
-            border-radius: 50px;
-            font-size: 12.5px;
-            box-shadow: 0 8px 24px rgba(37,211,102,0.35);
+        /* ── FLOATING WA BUTTON ─────────────────────────── */
+        .btn-wa-float {
+            position: fixed; bottom: 20px; right: 20px; z-index: 97;
+            display: flex; align-items: center; gap: 8px;
+            padding: 11px 18px; background: var(--whatsapp);
+            color: #052e18; font-weight: 700; text-decoration: none;
+            border-radius: 50px; font-size: 12.5px;
+            box-shadow: 0 6px 24px rgba(37,211,102,.4);
+            transition: transform .15s;
         }
-        .btn-channel-floating:hover { transform: translateY(-1px); }
-        @media (max-width: 480px) { .btn-channel-floating span.label { display: none; } }
-
-        .link-bar { text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
-        .link-bar a { color: var(--muted); font-size: 12px; text-decoration: none; }
-        .link-bar a:hover { color: var(--accent); }
+        .btn-wa-float:hover { transform: translateY(-2px); }
+        @media (max-width: 480px) { .btn-wa-float .label { display: none; } }
     </style>
 </head>
 <body>
-    <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener" class="btn-channel-floating">📢 <span class="label">rejoindre la chaîne</span></a>
 
-    <div class="term">
-        <div class="term-bar">
-            <span class="term-dot r"></span>
-            <span class="term-dot y"></span>
-            <span class="term-dot g"></span>
-            <span class="term-title">sigma-mdx.sh</span>
+<!-- Overlay mobile -->
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-icon">Σ</div>
+        <div>
+            <div class="brand-name">SIGMA MDX</div>
+            <div class="brand-sub">mon espace</div>
         </div>
-        <div class="term-body">
+    </div>
 
-            <div class="brand-mark">Σ</div>
-            <h1>mon espace sigma-mdx</h1>
-            <p class="subtitle">compte · bot · abonnement</p>
+    <div class="sidebar-user">
+        <div class="user-id" id="sideUserId">chargement...</div>
+        <div class="user-phone" id="sideUserPhone">–</div>
+        <span class="sub-badge" id="sideSubBadge">–</span>
+    </div>
 
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">navigation</div>
+        <button class="nav-item active" data-section="compte" onclick="showSection('compte')">
+            <span class="nav-icon">👤</span> mon compte
+        </button>
+        <button class="nav-item" data-section="bot" onclick="showSection('bot')">
+            <span class="nav-icon">🤖</span> mon bot
+        </button>
+        <button class="nav-item" data-section="abonnement" onclick="showSection('abonnement')">
+            <span class="nav-icon">💳</span> abonnement
+        </button>
+        <div class="nav-section-label">communauté</div>
+        <button class="nav-item" data-section="chaine" onclick="showSection('chaine')">
+            <span class="nav-icon">📢</span> chaîne officielle
+        </button>
+    </nav>
+
+    <div class="sidebar-bot-status">
+        <div class="bot-status-row">
+            <span class="bot-dot" id="sideBotDot"></span>
+            <span class="bot-status-label">bot :</span>
+            <span class="bot-status-val" id="sideBotStatus">–</span>
+        </div>
+    </div>
+
+    <div class="sidebar-footer">
+        <button class="btn-logout" id="logoutBtn">
+            <span>⏻</span> déconnexion
+        </button>
+    </div>
+</aside>
+
+<!-- TOPBAR mobile -->
+<header class="topbar">
+    <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="topbar-brand"><span>Σ</span> SIGMA MDX</div>
+    <div class="topbar-status">
+        <span class="bot-dot" id="topBotDot"></span>
+        <span id="topBotStatus">–</span>
+    </div>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+    <div class="content-panel">
+        <div class="panel-header">
+            <div class="panel-header-dots">
+                <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            </div>
+            <span class="panel-header-title" id="panelTitle">compte.sh</span>
+        </div>
+        <div class="panel-body">
             <div class="alert" id="alert"></div>
 
-            <div class="channel-banner">
-                <h2>rejoins la chaîne officielle</h2>
-                <p>reste informé des mises à jour et de la maintenance.</p>
-                <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06" target="_blank" rel="noopener" class="btn-channel">rejoindre la chaîne WhatsApp</a>
-            </div>
-
-            <!-- SECTION : MON COMPTE -->
-            <h2 class="section-title">mon compte</h2>
-            <div class="info-card">
-                <div class="info-row">
-                    <span class="info-label">identifiant</span>
-                    <span class="info-value" id="username">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">numéro whatsapp</span>
-                    <span class="info-value" id="phoneNumber">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">plan actuel</span>
-                    <span class="info-value" id="planName">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">expire le</span>
-                    <span class="info-value" id="expiresAt">-</span>
+            <!-- ══ SECTION : COMPTE ════════════════════════ -->
+            <div class="section active" id="sec-compte">
+                <div class="section-heading">mon compte</div>
+                <p class="section-sub">informations et abonnement actuel</p>
+                <div class="info-card">
+                    <div class="info-row">
+                        <span class="info-label">identifiant</span>
+                        <span class="info-value" id="username">–</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">numéro whatsapp</span>
+                        <span class="info-value" id="phoneNumber">–</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">plan actuel</span>
+                        <span class="info-value" id="planName">–</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">expire le</span>
+                        <span class="info-value" id="expiresAt">–</span>
+                    </div>
                 </div>
             </div>
 
-            <hr class="divider">
-
-            <!-- SECTION : MON BOT -->
-            <h2 class="section-title">mon bot</h2>
-            <div class="info-card">
-                <div class="info-row">
-                    <span class="info-label">statut</span>
-                    <span class="status-badge" id="botStatus">-</span>
+            <!-- ══ SECTION : BOT ══════════════════════════ -->
+            <div class="section" id="sec-bot">
+                <div class="section-heading">mon bot</div>
+                <p class="section-sub">état en temps réel et contrôles</p>
+                <div class="info-card">
+                    <div class="info-row">
+                        <span class="info-label">statut</span>
+                        <span class="status-badge" id="botStatus">–</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">token</span>
+                        <span class="info-value" id="botToken">–</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">créé le</span>
+                        <span class="info-value" id="createdAt">–</span>
+                    </div>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">token</span>
-                    <span class="info-value" id="botToken">-</span>
+                <div class="actions">
+                    <button class="btn-start"   id="btnStart"   onclick="startBot()">▶ démarrer</button>
+                    <button class="btn-stop"     id="btnStop"    onclick="stopBot()">■ arrêter</button>
+                    <button class="btn-restart"  id="btnRestart" onclick="restartBot()">↻ redémarrer</button>
+                    <button class="btn-delete"   id="btnDelete"  onclick="showDeleteConfirm()">✕ supprimer</button>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">créé le</span>
-                    <span class="info-value" id="createdAt">-</span>
+                <div class="delete-confirm" id="deleteConfirm">
+                    <p>⚠️ action irréversible — toutes les données du bot seront supprimées définitivement.</p>
+                    <div class="delete-btns">
+                        <button class="btn-delete" onclick="confirmDelete()">confirmer</button>
+                        <button class="btn-stop"   onclick="hideDeleteConfirm()">annuler</button>
+                    </div>
                 </div>
             </div>
 
-            <div class="actions">
-                <button class="btn-start" id="btnStart" onclick="startBot()">▶ démarrer</button>
-                <button class="btn-stop"  id="btnStop"  onclick="stopBot()">■ arrêter</button>
-                <button class="btn-restart" id="btnRestart" onclick="restartBot()">↻ redémarrer</button>
-                <button class="btn-delete" id="btnDelete" onclick="showDeleteConfirm()">✕ supprimer</button>
+            <!-- ══ SECTION : ABONNEMENT ═══════════════════ -->
+            <div class="section" id="sec-abonnement">
+                <div class="section-heading">abonnement</div>
+                <p class="section-sub">renouveler ou changer de plan</p>
+                <div class="plans" id="plansContainer"></div>
             </div>
 
-            <div class="delete-confirm" id="deleteConfirm">
-                <p>attention : cette action est irréversible. toutes les données du bot seront supprimées définitivement.</p>
-                <div class="delete-confirm-buttons">
-                    <button class="btn-delete" onclick="confirmDelete()">confirmer la suppression</button>
-                    <button class="btn-stop" onclick="hideDeleteConfirm()">annuler</button>
+            <!-- ══ SECTION : CHAÎNE ═══════════════════════ -->
+            <div class="section" id="sec-chaine">
+                <div class="section-heading">chaîne officielle</div>
+                <p class="section-sub">restez informé des mises à jour</p>
+                <div class="channel-card">
+                    <h3>rejoins la chaîne</h3>
+                    <p>mises à jour, maintenance, nouvelles fonctionnalités — tout y est annoncé en premier.</p>
+                    <a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06"
+                       target="_blank" rel="noopener" class="btn-wa">📢 rejoindre sur WhatsApp</a>
                 </div>
-            </div>
-
-            <hr class="divider">
-
-            <!-- SECTION : ABONNEMENT -->
-            <h2 class="section-title">renouveler mon abonnement</h2>
-            <div class="plans" id="plansContainer"></div>
-
-            <div class="link-bar">
-                <a href="#" id="logoutLink">déconnexion</a>
             </div>
 
         </div>
     </div>
+</main>
 
-    <script>
-        const socket = io();
-        const alertDiv = document.getElementById('alert');
-        let currentAccount = null;
-        let botTokenValue = null;
-        let botUUID = null;
+<!-- Floating WhatsApp button -->
+<a href="https://whatsapp.com/channel/0029VbBIAP58KMqoJluW8r06"
+   target="_blank" rel="noopener" class="btn-wa-float">
+    📢 <span class="label">chaîne officielle</span>
+</a>
 
-        const PLAN_LABELS = {
-            trial: 'Essai gratuit',
-            '2days': '2 jours',
-            week: '1 semaine',
-            month: '1 mois'
-        };
+<script>
+const socket = io();
+let currentAccount = null;
+let botTokenValue   = null;
+let botUUID         = null;
 
-        const PLAN_PRICES = {
-            '2days': 500,
-            week: 1000,
-            month: 3000
-        };
+const PLAN_LABELS = { trial:'Essai gratuit', '2days':'2 jours', week:'1 semaine', month:'1 mois' };
+const PLAN_PRICES = { '2days':500, week:1000, month:3000 };
+const SECTION_TITLES = {
+    compte:'compte.sh', bot:'bot.sh', abonnement:'paiement.sh', chaine:'canal.sh'
+};
 
-        function showAlert(message, type) {
-            alertDiv.textContent = message;
-            alertDiv.className = `alert ${type} show`;
-            setTimeout(() => alertDiv.classList.remove('show'), 6000);
-        }
+const alertDiv = document.getElementById('alert');
 
-        // ── STRIPE ──────────────────────────────────────────────────────────
-        let stripePlansAvailable = {};
-        async function loadStripePlans() {
-            try {
-                const r = await fetch('/api/stripe/plans');
-                const d = await r.json();
-                if (r.ok && Array.isArray(d.plans)) {
-                    stripePlansAvailable = Object.fromEntries(d.plans.map(p => [p.plan, true]));
-                }
-            } catch { }
-        }
+// ── SIDEBAR / HAMBURGER ──────────────────────────────────────────
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const hb = document.getElementById('hamburger');
+    const ov = document.getElementById('overlay');
+    sb.classList.toggle('open');
+    hb.classList.toggle('open');
+    ov.classList.toggle('open');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('hamburger').classList.remove('open');
+    document.getElementById('overlay').classList.remove('open');
+}
 
-        function renderPlans() {
-            const container = document.getElementById('plansContainer');
-            container.innerHTML = '';
-            for (const [key, price] of Object.entries(PLAN_PRICES)) {
-                const card = document.createElement('div');
-                card.className = 'plan-card';
-                const stripeBtn = stripePlansAvailable[key]
-                    ? `<button data-plan="${key}" data-method="stripe" class="stripe-btn">payer par carte</button>`
-                    : '';
-                card.innerHTML = `
-                    <h3>${PLAN_LABELS[key]}</h3>
-                    <div class="price">${price} FCFA</div>
-                    <button data-plan="${key}" data-method="moneyfusion">mobile money</button>
-                    ${stripeBtn}
-                `;
-                container.appendChild(card);
-            }
-            container.querySelectorAll('button').forEach(btn => {
-                btn.addEventListener('click', () => payPlan(btn.dataset.plan, btn, btn.dataset.method));
-            });
-        }
+// ── SECTION ROUTING ──────────────────────────────────────────────
+function showSection(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('sec-' + name).classList.add('active');
+    document.querySelector(`[data-section="${name}"]`).classList.add('active');
+    document.getElementById('panelTitle').textContent = SECTION_TITLES[name] || name;
+    if (window.innerWidth <= 768) closeSidebar();
+}
 
-        async function payPlan(plan, btn, method) {
-            const orig = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = 'redirection...';
-            const endpoint = method === 'stripe' ? '/api/stripe/checkout' : '/api/payment/create';
-            try {
-                const r = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plan })
-                });
-                const d = await r.json();
-                if (!r.ok) throw new Error(d.error || 'erreur de paiement');
-                window.location.href = d.url;
-            } catch (err) {
-                showAlert(`erreur : ${err.message}`, 'error');
-                btn.disabled = false;
-                btn.textContent = orig;
-            }
-        }
+// ── ALERTS ───────────────────────────────────────────────────────
+function showAlert(msg, type) {
+    alertDiv.textContent = msg;
+    alertDiv.className = `alert ${type} show`;
+    clearTimeout(alertDiv._t);
+    alertDiv._t = setTimeout(() => alertDiv.classList.remove('show'), 6000);
+}
 
-        // ── COMPTE ──────────────────────────────────────────────────────────
-        async function loadAccount() {
-            try {
-                const r = await fetch('/api/account/me');
-                const d = await r.json();
-                if (!r.ok) { window.location.href = '/login.html'; return; }
+// ── SIDEBAR USER INFO ────────────────────────────────────────────
+function updateSidebarUser(acc) {
+    document.getElementById('sideUserId').textContent    = acc.username    || '–';
+    document.getElementById('sideUserPhone').textContent = acc.phoneNumber || '–';
+    const exp  = acc.subscriptionExpiresAt ? new Date(acc.subscriptionExpiresAt) : null;
+    const now  = new Date();
+    const soon = exp && (exp - now) < 3 * 24 * 3600 * 1000;
+    const badge = document.getElementById('sideSubBadge');
+    if (!exp || exp < now) {
+        badge.textContent = 'expiré'; badge.className = 'sub-badge expired';
+    } else if (soon) {
+        badge.textContent = 'expire bientôt'; badge.className = 'sub-badge expiring';
+    } else {
+        badge.textContent = PLAN_LABELS[acc.subscriptionPlan] || acc.subscriptionPlan;
+        badge.className = 'sub-badge active';
+    }
+}
 
-                currentAccount = d.account;
-                document.getElementById('username').textContent = currentAccount.username || '-';
-                document.getElementById('phoneNumber').textContent = currentAccount.phoneNumber || '-';
-                document.getElementById('planName').textContent = PLAN_LABELS[currentAccount.subscriptionPlan] || currentAccount.subscriptionPlan || '-';
+// ── BOT STATUS DOTS (sidebar + topbar) ──────────────────────────
+function updateBotStatusUI(status) {
+    const badge = document.getElementById('botStatus');
+    badge.textContent = status;
+    badge.className   = `status-badge ${status}`;
 
-                const expiresEl = document.getElementById('expiresAt');
-                if (currentAccount.subscriptionExpiresAt) {
-                    const exp = new Date(currentAccount.subscriptionExpiresAt);
-                    expiresEl.textContent = exp.toLocaleString('fr-FR');
-                    if (exp < new Date()) expiresEl.style.color = '#ff5f56';
-                } else {
-                    expiresEl.textContent = '-';
-                }
+    ['sideBotDot','topBotDot'].forEach(id => {
+        const el = document.getElementById(id);
+        el.className = `bot-dot ${status}`;
+    });
+    ['sideBotStatus','topBotStatus'].forEach(id => {
+        document.getElementById(id).textContent = status;
+    });
 
-                const params = new URLSearchParams(window.location.search);
-                if (params.get('stripe') === 'success') {
-                    showAlert('paiement validé ! ton abonnement sera mis à jour sous quelques instants.', 'success');
-                } else if (params.get('stripe') === 'cancelled') {
-                    showAlert('paiement annulé.', 'error');
-                } else if (params.get('payment') === 'processed') {
-                    showAlert('paiement en cours de traitement. ton abonnement sera mis à jour sous quelques instants.', 'success');
-                }
+    const btnStart   = document.getElementById('btnStart');
+    const btnStop    = document.getElementById('btnStop');
+    const btnRestart = document.getElementById('btnRestart');
+    if (status === 'connected') {
+        btnStart.disabled = true; btnStop.disabled = false; btnRestart.disabled = false;
+    } else if (status === 'disconnected' || status === 'stopped' || status === 'logged_out') {
+        btnStart.disabled = false; btnStop.disabled = true;  btnRestart.disabled = false;
+    } else if (status === 'pairing' || status === 'connecting') {
+        btnStart.disabled = true;  btnStop.disabled = true;  btnRestart.disabled = true;
+    }
+}
 
-                if (currentAccount.token && currentAccount.token !== botTokenValue) {
-                    botTokenValue = currentAccount.token;
-                    loadBotInfo();
-                }
-            } catch (err) {
-                showAlert(`erreur compte : ${err.message}`, 'error');
-            }
-        }
+// ── STRIPE ───────────────────────────────────────────────────────
+let stripePlans = {};
+async function loadStripePlans() {
+    try {
+        const r = await fetch('/api/stripe/plans');
+        const d = await r.json();
+        if (r.ok && Array.isArray(d.plans))
+            stripePlans = Object.fromEntries(d.plans.map(p => [p.plan, true]));
+    } catch {}
+}
+function renderPlans() {
+    const c = document.getElementById('plansContainer');
+    c.innerHTML = '';
+    for (const [key, price] of Object.entries(PLAN_PRICES)) {
+        const card = document.createElement('div');
+        card.className = 'plan-card';
+        const stripeBtn = stripePlans[key]
+            ? `<button class="pay-btn" data-plan="${key}" data-method="stripe">💳 carte bancaire</button>`
+            : '';
+        card.innerHTML = `
+            <h3>${PLAN_LABELS[key]}</h3>
+            <div class="price">${price} FCFA<small>Mobile Money</small></div>
+            <button class="pay-btn" data-plan="${key}" data-method="moneyfusion">📱 mobile money</button>
+            ${stripeBtn}
+        `;
+        c.appendChild(card);
+    }
+    c.querySelectorAll('.pay-btn').forEach(btn =>
+        btn.addEventListener('click', () => payPlan(btn.dataset.plan, btn, btn.dataset.method))
+    );
+}
 
-        // ── BOT ─────────────────────────────────────────────────────────────
-        function updateBotStatus(status) {
-            const badge = document.getElementById('botStatus');
-            badge.textContent = status;
-            badge.className = `status-badge ${status}`;
-            const btnStart   = document.getElementById('btnStart');
-            const btnStop    = document.getElementById('btnStop');
-            const btnRestart = document.getElementById('btnRestart');
-            if (status === 'connected') {
-                btnStart.disabled = true; btnStop.disabled = false; btnRestart.disabled = false;
-            } else if (status === 'disconnected' || status === 'stopped') {
-                btnStart.disabled = false; btnStop.disabled = true; btnRestart.disabled = false;
-            } else if (status === 'pairing' || status === 'connecting') {
-                btnStart.disabled = true; btnStop.disabled = true; btnRestart.disabled = true;
-            }
-        }
-
-        async function loadBotInfo() {
-            if (!botTokenValue) return;
-            try {
-                const r = await fetch(`/api/bot/${botTokenValue}/status`);
-                const d = await r.json();
-                if (!r.ok) return;
-                botUUID = d.uuid;
-                document.getElementById('botToken').textContent = d.token || botTokenValue;
-                document.getElementById('createdAt').textContent = d.createdAt ? new Date(d.createdAt).toLocaleString('fr-FR') : '-';
-                updateBotStatus(d.socketStatus || d.status || 'unknown');
-                socket.emit('join-bot', { uuid: botUUID });
-            } catch { }
-        }
-
-        async function startBot() {
-            const btn = document.getElementById('btnStart');
-            btn.disabled = true; btn.innerHTML = '<span class="loading"></span>démarrage...';
-            try {
-                const r = await fetch(`/api/bot/${botTokenValue}/start`, { method: 'POST' });
-                const d = await r.json();
-                if (!r.ok) throw new Error(d.error || 'erreur');
-                showAlert('bot démarré', 'success');
-                updateBotStatus('connecting');
-            } catch (err) { showAlert(`erreur : ${err.message}`, 'error'); }
-            finally { btn.disabled = false; btn.textContent = '▶ démarrer'; }
-        }
-
-        async function stopBot() {
-            const btn = document.getElementById('btnStop');
-            btn.disabled = true; btn.innerHTML = '<span class="loading"></span>arrêt...';
-            try {
-                const r = await fetch(`/api/bot/${botTokenValue}/stop`, { method: 'POST' });
-                const d = await r.json();
-                if (!r.ok) throw new Error(d.error || 'erreur');
-                showAlert('bot arrêté', 'success');
-                updateBotStatus('stopped');
-            } catch (err) { showAlert(`erreur : ${err.message}`, 'error'); }
-            finally { btn.disabled = false; btn.textContent = '■ arrêter'; }
-        }
-
-        async function restartBot() {
-            const btn = document.getElementById('btnRestart');
-            btn.disabled = true; btn.innerHTML = '<span class="loading"></span>redémarrage...';
-            try {
-                const r = await fetch(`/api/bot/${botTokenValue}/restart`, { method: 'POST' });
-                const d = await r.json();
-                if (!r.ok) throw new Error(d.error || 'erreur');
-                showAlert('bot redémarré', 'success');
-                updateBotStatus('connecting');
-            } catch (err) { showAlert(`erreur : ${err.message}`, 'error'); }
-            finally { btn.disabled = false; btn.textContent = '↻ redémarrer'; }
-        }
-
-        function showDeleteConfirm() { document.getElementById('deleteConfirm').classList.add('show'); }
-        function hideDeleteConfirm() { document.getElementById('deleteConfirm').classList.remove('show'); }
-
-        async function confirmDelete() {
-            const btn = document.getElementById('btnDelete');
-            btn.disabled = true; btn.innerHTML = '<span class="loading"></span>suppression...';
-            try {
-                const r = await fetch(`/api/bot/${botTokenValue}`, { method: 'DELETE' });
-                const d = await r.json();
-                if (!r.ok) throw new Error(d.error || 'erreur');
-                showAlert('bot supprimé. redirection...', 'success');
-                hideDeleteConfirm();
-                setTimeout(() => window.location.href = '/', 2000);
-            } catch (err) {
-                showAlert(`erreur : ${err.message}`, 'error');
-                hideDeleteConfirm();
-                btn.disabled = false; btn.textContent = '✕ supprimer';
-            }
-        }
-
-        // ── SOCKET.IO ────────────────────────────────────────────────────────
-        socket.on('bot-status', ({ uuid, status }) => {
-            if (uuid === botUUID) updateBotStatus(status);
+async function payPlan(plan, btn, method) {
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = '⏳ redirection...';
+    const ep = method === 'stripe' ? '/api/stripe/checkout' : '/api/payment/create';
+    try {
+        const r = await fetch(ep, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ plan })
         });
-        socket.on('bot-error', ({ uuid, error }) => {
-            if (uuid === botUUID) showAlert(`erreur : ${error}`, 'error');
-        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'erreur paiement');
+        window.location.href = d.url;
+    } catch (err) {
+        showAlert('erreur : ' + err.message, 'error');
+        btn.disabled = false; btn.textContent = orig;
+    }
+}
 
-        // ── DÉCONNEXION ──────────────────────────────────────────────────────
-        document.getElementById('logoutLink').addEventListener('click', async (e) => {
-            e.preventDefault();
-            await fetch('/api/auth/logout', { method: 'POST' });
-            window.location.href = '/login.html';
-        });
+// ── ACCOUNT ──────────────────────────────────────────────────────
+async function loadAccount() {
+    try {
+        const r = await fetch('/api/account/me');
+        const d = await r.json();
+        if (!r.ok) { window.location.href = '/login.html'; return; }
 
-        // ── INIT ─────────────────────────────────────────────────────────────
-        loadStripePlans().then(renderPlans);
-        loadAccount();
-        setInterval(() => { loadAccount(); if (botTokenValue) loadBotInfo(); }, 15000);
-    </script>
+        currentAccount = d.account;
+        document.getElementById('username').textContent    = currentAccount.username    || '–';
+        document.getElementById('phoneNumber').textContent = currentAccount.phoneNumber || '–';
+        document.getElementById('planName').textContent    = PLAN_LABELS[currentAccount.subscriptionPlan] || currentAccount.subscriptionPlan || '–';
+
+        const exEl = document.getElementById('expiresAt');
+        if (currentAccount.subscriptionExpiresAt) {
+            const exp = new Date(currentAccount.subscriptionExpiresAt);
+            exEl.textContent = exp.toLocaleString('fr-FR');
+            if (exp < new Date()) exEl.style.color = 'var(--danger)';
+        } else { exEl.textContent = '–'; }
+
+        updateSidebarUser(currentAccount);
+
+        const p = new URLSearchParams(window.location.search);
+        if (p.get('stripe') === 'success')
+            showAlert('✅ paiement validé ! abonnement mis à jour sous quelques instants.', 'success');
+        else if (p.get('stripe') === 'cancelled')
+            showAlert('paiement annulé.', 'error');
+        else if (p.get('payment') === 'processed')
+            showAlert('⏳ paiement en cours de traitement…', 'success');
+
+        if (currentAccount.token && currentAccount.token !== botTokenValue) {
+            botTokenValue = currentAccount.token;
+            loadBotInfo();
+        }
+    } catch (err) { showAlert('erreur compte : ' + err.message, 'error'); }
+}
+
+// ── BOT INFO ─────────────────────────────────────────────────────
+async function loadBotInfo() {
+    if (!botTokenValue) return;
+    try {
+        const r = await fetch(`/api/bot/${botTokenValue}/status`);
+        const d = await r.json();
+        if (!r.ok) return;
+        botUUID = d.uuid;
+        document.getElementById('botToken').textContent  = d.token || botTokenValue;
+        document.getElementById('createdAt').textContent = d.createdAt
+            ? new Date(d.createdAt).toLocaleString('fr-FR') : '–';
+        updateBotStatusUI(d.socketStatus || d.status || 'unknown');
+        socket.emit('join-bot', { uuid: botUUID });
+    } catch {}
+}
+
+// ── BOT CONTROLS ─────────────────────────────────────────────────
+async function botAction(url, method, btn, loadingText, successText, successStatus) {
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span>${loadingText}`;
+    try {
+        const r = await fetch(url, { method });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'erreur');
+        showAlert(successText, 'success');
+        updateBotStatusUI(successStatus);
+    } catch (err) { showAlert('erreur : ' + err.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = orig; }
+}
+function startBot()   { botAction(`/api/bot/${botTokenValue}/start`,   'POST', document.getElementById('btnStart'),   'démarrage…',   '▶ bot démarré',   'connecting'); }
+function stopBot()    { botAction(`/api/bot/${botTokenValue}/stop`,    'POST', document.getElementById('btnStop'),    'arrêt…',       '■ bot arrêté',    'stopped'); }
+function restartBot() { botAction(`/api/bot/${botTokenValue}/restart`, 'POST', document.getElementById('btnRestart'), 'redémarrage…', '↻ bot redémarré', 'connecting'); }
+
+function showDeleteConfirm() { document.getElementById('deleteConfirm').classList.add('show'); }
+function hideDeleteConfirm() { document.getElementById('deleteConfirm').classList.remove('show'); }
+async function confirmDelete() {
+    const btn = document.getElementById('btnDelete');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>suppression…';
+    try {
+        const r = await fetch(`/api/bot/${botTokenValue}`, { method: 'DELETE' });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'erreur');
+        showAlert('bot supprimé. redirection…', 'success');
+        hideDeleteConfirm();
+        setTimeout(() => window.location.href = '/', 2000);
+    } catch (err) {
+        showAlert('erreur : ' + err.message, 'error');
+        hideDeleteConfirm();
+        btn.disabled = false; btn.textContent = '✕ supprimer';
+    }
+}
+
+// ── SOCKET.IO ────────────────────────────────────────────────────
+socket.on('bot-status', ({ uuid, status }) => { if (uuid === botUUID) updateBotStatusUI(status); });
+socket.on('bot-error',  ({ uuid, error })  => { if (uuid === botUUID) showAlert('erreur : ' + error, 'error'); });
+
+// ── LOGOUT ───────────────────────────────────────────────────────
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
+});
+
+// ── INIT ─────────────────────────────────────────────────────────
+loadStripePlans().then(renderPlans);
+loadAccount();
+setInterval(() => { loadAccount(); if (botTokenValue) loadBotInfo(); }, 15000);
+</script>
 </body>
 </html>
