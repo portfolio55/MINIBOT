@@ -112,8 +112,11 @@
             width: 100%; text-align: left; font-family: var(--mono);
             border-left: 2px solid transparent;
             transition: color .15s, background .15s, border-color .15s;
+            touch-action: manipulation; user-select: none;
+            transform: none !important;
         }
-        .nav-item:hover { color: var(--text); background: rgba(255,255,255,.04); }
+        .nav-item:hover { color: var(--text); background: rgba(255,255,255,.04); transform: none !important; }
+        .nav-item:active { background: rgba(255,255,255,.08); }
         .nav-item.active { color: var(--accent); background: rgba(57,211,83,.07); border-left-color: var(--accent); }
         .nav-item .nav-icon { font-size: 15px; width: 20px; text-align: center; }
         .nav-section-label {
@@ -161,21 +164,25 @@
             border-bottom: 1px solid var(--border);
             align-items: center; justify-content: space-between;
             padding: 0 16px;
-            z-index: 98;
+            z-index: 101;
         }
         @media (max-width: 768px) { .topbar { display: flex; } }
         .hamburger {
-            display: flex; flex-direction: column; gap: 4px;
-            width: 28px; height: 28px; justify-content: center;
-            background: none; border: none; cursor: pointer; padding: 2px;
+            display: flex; flex-direction: column; gap: 5px;
+            width: 44px; height: 44px; justify-content: center; align-items: center;
+            background: none; border: none; cursor: pointer; padding: 8px;
+            touch-action: manipulation; user-select: none;
+            border-radius: var(--radius);
         }
+        .hamburger:active { background: rgba(255,255,255,.06); }
         .hamburger span {
-            display: block; height: 2px; border-radius: 2px;
+            display: block; width: 22px; height: 2px; border-radius: 2px;
             background: var(--text); transition: transform .2s, opacity .2s;
+            pointer-events: none;
         }
-        .hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+        .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
         .hamburger.open span:nth-child(2) { opacity: 0; }
-        .hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+        .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
         .topbar-brand { font-size: 14px; font-weight: 700; color: var(--text); }
         .topbar-brand span { color: var(--accent); }
         .topbar-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
@@ -363,7 +370,7 @@
 <body>
 
 <!-- Overlay mobile -->
-<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<div class="overlay" id="overlay"></div>
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
@@ -383,17 +390,17 @@
 
     <nav class="sidebar-nav">
         <div class="nav-section-label">navigation</div>
-        <button class="nav-item active" data-section="compte" onclick="showSection('compte')">
+        <button class="nav-item active" data-section="compte">
             <span class="nav-icon">👤</span> mon compte
         </button>
-        <button class="nav-item" data-section="bot" onclick="showSection('bot')">
+        <button class="nav-item" data-section="bot">
             <span class="nav-icon">🤖</span> mon bot
         </button>
-        <button class="nav-item" data-section="abonnement" onclick="showSection('abonnement')">
+        <button class="nav-item" data-section="abonnement">
             <span class="nav-icon">💳</span> abonnement
         </button>
         <div class="nav-section-label">communauté</div>
-        <button class="nav-item" data-section="chaine" onclick="showSection('chaine')">
+        <button class="nav-item" data-section="chaine">
             <span class="nav-icon">📢</span> chaîne officielle
         </button>
     </nav>
@@ -415,7 +422,7 @@
 
 <!-- TOPBAR mobile -->
 <header class="topbar">
-    <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="Menu">
+    <button class="hamburger" id="hamburger" aria-label="Menu">
         <span></span><span></span><span></span>
     </button>
     <div class="topbar-brand"><span>Σ</span> SIGMA MDX</div>
@@ -542,25 +549,45 @@ function toggleSidebar() {
     const sb = document.getElementById('sidebar');
     const hb = document.getElementById('hamburger');
     const ov = document.getElementById('overlay');
+    if (!sb || !hb || !ov) return;
     sb.classList.toggle('open');
     hb.classList.toggle('open');
     ov.classList.toggle('open');
 }
 function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('hamburger').classList.remove('open');
-    document.getElementById('overlay').classList.remove('open');
+    const sb = document.getElementById('sidebar');
+    const hb = document.getElementById('hamburger');
+    const ov = document.getElementById('overlay');
+    if (sb) sb.classList.remove('open');
+    if (hb) hb.classList.remove('open');
+    if (ov) ov.classList.remove('open');
 }
 
 // ── SECTION ROUTING ──────────────────────────────────────────────
 function showSection(name) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    document.getElementById('sec-' + name).classList.add('active');
-    document.querySelector(`[data-section="${name}"]`).classList.add('active');
-    document.getElementById('panelTitle').textContent = SECTION_TITLES[name] || name;
+    const sec = document.getElementById('sec-' + name);
+    const btn = document.querySelector('[data-section="' + name + '"]');
+    const title = document.getElementById('panelTitle');
+    if (sec) sec.classList.add('active');
+    if (btn) btn.classList.add('active');
+    if (title) title.textContent = SECTION_TITLES[name] || name;
     if (window.innerWidth <= 768) closeSidebar();
 }
+
+// Attache les listeners nav + hamburger après chargement DOM
+document.getElementById('hamburger').addEventListener('click', function(e) {
+    e.stopPropagation();
+    toggleSidebar();
+});
+document.getElementById('overlay').addEventListener('click', closeSidebar);
+document.querySelectorAll('.nav-item[data-section]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showSection(btn.getAttribute('data-section'));
+    });
+});
 
 // ── ALERTS ───────────────────────────────────────────────────────
 function showAlert(msg, type) {
