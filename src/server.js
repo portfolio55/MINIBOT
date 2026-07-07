@@ -375,17 +375,21 @@ app.get("/dashboard/:token", (req, res) => {
   res.redirect(301, "/account.html");
 });
 
+// Charge un bot en mémoire depuis la DB s'il n'y est pas encore
+async function ensureBotInMemory(bot) {
+  if (!botManager.bots.has(bot.uuid)) {
+    await botManager.createBot(bot.uuid, bot.phoneNumber, false);
+  }
+}
+
 // API Bot - Démarrer
-// [AMÉLIORÉ] Validation du format de token avant requête DB
 app.post("/api/bot/:token/start", botApiLimiter, validateTokenFormat, async (req, res) => {
   try {
     const { token } = req.params;
     const bot = await getBotByToken(token);
+    if (!bot) return res.status(404).json({ error: "Bot introuvable" });
 
-    if (!bot) {
-      return res.status(404).json({ error: "Bot introuvable" });
-    }
-
+    await ensureBotInMemory(bot);
     await botManager.startBot(bot.uuid);
     res.json({ success: true, message: "Bot démarré" });
   } catch (error) {
@@ -398,11 +402,12 @@ app.post("/api/bot/:token/stop", botApiLimiter, validateTokenFormat, async (req,
   try {
     const { token } = req.params;
     const bot = await getBotByToken(token);
+    if (!bot) return res.status(404).json({ error: "Bot introuvable" });
 
-    if (!bot) {
-      return res.status(404).json({ error: "Bot introuvable" });
+    if (!botManager.bots.has(bot.uuid)) {
+      // Pas en mémoire = déjà arrêté
+      return res.json({ success: true, message: "Bot déjà arrêté" });
     }
-
     await botManager.stopBot(bot.uuid);
     res.json({ success: true, message: "Bot arrêté" });
   } catch (error) {
@@ -415,11 +420,9 @@ app.post("/api/bot/:token/restart", botApiLimiter, validateTokenFormat, async (r
   try {
     const { token } = req.params;
     const bot = await getBotByToken(token);
+    if (!bot) return res.status(404).json({ error: "Bot introuvable" });
 
-    if (!bot) {
-      return res.status(404).json({ error: "Bot introuvable" });
-    }
-
+    await ensureBotInMemory(bot);
     await botManager.restartBot(bot.uuid);
     res.json({ success: true, message: "Bot redémarré" });
   } catch (error) {
