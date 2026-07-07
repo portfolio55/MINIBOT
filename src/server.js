@@ -529,6 +529,31 @@ app.get("/api/admin/security", adminLimiter, checkLockout, extractAdminCredentia
   });
 });
 
+// API Admin - Prolonger manuellement l'abonnement d'un bot
+// [IMPORTANT] Doit être déclarée AVANT la route générique /bot/:uuid/:action,
+// sinon Express capture "extend-subscription" comme :action → "Action invalide"
+app.post("/api/admin/bot/:uuid/extend-subscription", adminLimiter, checkLockout, extractAdminCredentials, verifyAdmin, async (req, res) => {
+  try {
+    const { uuid } = req.params;
+    const { plan } = req.body;
+    const planDef = SUBSCRIPTION_PLANS[plan];
+    if (!planDef) {
+      return res.status(400).json({ error: "Plan invalide" });
+    }
+
+    const bot = await getBotByUUID(uuid);
+    if (!bot) {
+      return res.status(404).json({ error: "Bot introuvable" });
+    }
+
+    const result = await dbExtendSubscription(uuid, plan, planDef.durationMs);
+    logger.info(`[Admin] Abonnement ${plan} accordé manuellement au bot ${uuid}`);
+    res.json({ success: true, subscriptionExpiresAt: result?.subscriptionExpiresAt });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // API Admin - Actions sur un bot
 // [AMÉLIORÉ] Validation UUID + auth renforcée
 app.post("/api/admin/bot/:uuid/:action", adminLimiter, checkLockout, extractAdminCredentials, verifyAdmin, async (req, res) => {
@@ -559,29 +584,6 @@ app.post("/api/admin/bot/:uuid/:action", adminLimiter, checkLockout, extractAdmi
     }
 
     res.json({ success: true, message: `Action ${action} exécutée` });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// API Admin - Prolonger manuellement l'abonnement d'un bot
-app.post("/api/admin/bot/:uuid/extend-subscription", adminLimiter, checkLockout, extractAdminCredentials, verifyAdmin, async (req, res) => {
-  try {
-    const { uuid } = req.params;
-    const { plan } = req.body;
-    const planDef = SUBSCRIPTION_PLANS[plan];
-    if (!planDef) {
-      return res.status(400).json({ error: "Plan invalide" });
-    }
-
-    const bot = await getBotByUUID(uuid);
-    if (!bot) {
-      return res.status(404).json({ error: "Bot introuvable" });
-    }
-
-    const result = await dbExtendSubscription(uuid, plan, planDef.durationMs);
-    logger.info(`[Admin] Abonnement ${plan} accordé manuellement au bot ${uuid}`);
-    res.json({ success: true, subscriptionExpiresAt: result?.subscriptionExpiresAt });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
