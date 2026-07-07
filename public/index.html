@@ -1125,7 +1125,7 @@
                             localStorage.setItem(STORAGE_TOKEN_KEY, data.token);
                             showStatus('bot déjà connecté, redirection...', 'success');
                             setTimeout(function() {
-                                window.location.href = '/dashboard/' + data.token;
+                                window.location.href = '/account.html';
                             }, 1200);
                             return;
                         }
@@ -1194,7 +1194,7 @@
                                 clearInterval(interval);
                                 showStatus('connexion réussie, redirection...', 'success');
                                 setTimeout(function() {
-                                    window.location.href = '/dashboard/' + token;
+                                    window.location.href = '/account.html';
                                 }, 1500);
                             }
                         }

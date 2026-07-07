@@ -1118,7 +1118,7 @@ class BotManager extends EventEmitter {
 
         const ownerJid = `${ownerBare}@s.whatsapp.net`;
         const commandsCount = Object.keys(await loadCommands()).length;
-        const dashboardLink = botAccount?.token ? `${SITE_LINK}/dashboard/${botAccount.token}` : null;
+        const dashboardLink = `${SITE_LINK}/account.html`;
 
         const welcomeText = [
           "╭━━━〔 *SIGMA MDX DEPLOY* 〕━━━┈⊷",
@@ -1173,7 +1173,7 @@ class BotManager extends EventEmitter {
       try {
         const ownerJid = `${ownerBare}@s.whatsapp.net`;
         const commandsCount = Object.keys(await loadCommands()).length;
-        const dashboardLink = botAccount?.token ? `${SITE_LINK}/dashboard/${botAccount.token}` : null;
+        const dashboardLink = `${SITE_LINK}/account.html`;
         const retryAccountLines = botAccount?.username ? [
           "",
           "*🔑 TON COMPTE SIGMA MDX*",

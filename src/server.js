@@ -370,10 +370,9 @@ app.get("/api/pairing/status/:uuid", async (req, res) => {
   }
 });
 
-// Dashboard utilisateur
+// Dashboard utilisateur — fusionné dans account.html, on redirige
 app.get("/dashboard/:token", (req, res) => {
-  res.setHeader("X-Robots-Tag", "noindex, nofollow");
-  res.sendFile(path.join(__dirname, "..", "public", "dashboard.html"));
+  res.redirect(301, "/account.html");
 });
 
 // API Bot - Démarrer
